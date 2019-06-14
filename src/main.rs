@@ -1,0 +1,168 @@
+/*
+ * Copyright (C) 2019 Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#[macro_use]
+extern crate log;
+
+mod packet;
+mod queue;
+
+use packet::Packet;
+use queue::Queue;
+
+use mio::net::UdpSocket;
+use rand::Rng;
+use std::net::{Ipv4Addr, SocketAddr};
+use std::time::{Duration, Instant};
+use structopt::StructOpt;
+
+#[derive(StructOpt, Debug)]
+struct Opt {
+    /// Listening port
+    #[structopt(short = "p", long = "port", default_value = "2019")]
+    port: u16,
+
+    /// Packet drop probability
+    #[structopt(short = "d", long = "drop", default_value = "0.0")]
+    drop: f64,
+
+    /// Minimum packet delay, in milliseconds
+    #[structopt(short = "m", long = "min_delay", default_value = "0")]
+    min_delay: u64,
+
+    /// Maximum packet delay, in milliseconds
+    #[structopt(short = "M", long = "max_delay", default_value = "0")]
+    max_delay: u64,
+
+    /// Verbose level
+    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
+    verbose: usize,
+
+    /// Timestamp (sec, ms, ns, none)
+    #[structopt(short = "t", long = "timestamp")]
+    ts: Option<stderrlog::Timestamp>,
+}
+
+const RECEIVER: mio::Token = mio::Token(0);
+
+fn process_queue(queue: &mut Queue, socket: &UdpSocket) {
+    while queue
+        .peek()
+        .map_or(false, |p| p.exit_time <= Instant::now())
+    {
+        let p = queue.pop().unwrap();
+        match socket.send_to(&p.data, &p.dst) {
+            Ok(len) => info!("Sent {} bytes to {}", len, p.dst),
+            Err(e) => warn!(
+                "Error transmitting {} bytes to {}: {}",
+                p.data.len(),
+                p.dst,
+                e
+            ),
+        }
+    }
+}
+
+fn main() {
+    let opt = Opt::from_args();
+
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(opt.verbose)
+        .timestamp(opt.ts.unwrap_or(stderrlog::Timestamp::Off))
+        .init()
+        .unwrap();
+
+    if opt.max_delay < opt.min_delay {
+        error!("The maximum delay has to be larger than the minimum one. Exiting.");
+        return;
+    }
+
+    if opt.drop < 0.0 || opt.drop > 1.0 {
+        error!("{} is not a valid probability value.", opt.drop);
+    }
+
+    let mut rng = rand::thread_rng();
+
+    let socket = match UdpSocket::bind(&SocketAddr::from((Ipv4Addr::UNSPECIFIED, opt.port))) {
+        Ok(socket) => socket,
+        Err(_) => {
+            error!("Could not open listening socket.");
+            return;
+        }
+    };
+
+    let mut queue = Queue::new();
+
+    let mut buffer = [0; u16::max_value() as usize];
+
+    let poll = mio::Poll::new().unwrap();
+    poll.register(
+        &socket,
+        RECEIVER,
+        mio::Ready::readable(),
+        mio::PollOpt::edge(),
+    )
+    .unwrap();
+
+    let mut events = mio::Events::with_capacity(32); // Just a few to interlate transmissions if needed
+
+    loop {
+        process_queue(&mut queue, &socket);
+
+        let max_delay = match queue.peek() {
+            None => None,
+            Some(packet) => packet.get_duration_till_next(),
+        };
+
+        poll.poll(&mut events, max_delay)
+            .expect("Error while polling socket");
+
+        for event in events.iter() {
+            match event.token() {
+                RECEIVER => {
+                    let (len, addr) = socket
+                        .recv_from(&mut buffer)
+                        .expect("Error while reading datagram.");
+
+                    info!("Received {} bytes from {}", len, addr);
+
+                    if opt.drop < rng.gen() {
+                        let delay = if opt.min_delay == opt.max_delay {
+                            Duration::new(0, 0)
+                        } else {
+                            Duration::from_millis(rng.gen_range(opt.min_delay, opt.max_delay))
+                        };
+
+                        info!(
+                            "Packet will be delayed for {} milliseconds",
+                            delay.as_millis()
+                        );
+
+                        match Packet::create(&buffer[..len], Instant::now() + delay) {
+                            Ok(packet) => queue.push(packet),
+                            Err(err) => warn!("{}", err),
+                        };
+                    } else {
+                        info!("Fortuna made me do it. Packet dropped.");
+                    }
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+}

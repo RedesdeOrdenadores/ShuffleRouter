@@ -1,0 +1,14 @@
+[package]
+name = "shufflerouter"
+version = "0.9.0"
+authors = ["Miguel Rodríguez Pérez <miguel@det.uvigo.gal>"]
+edition = "2018"
+description = "A suffling router for Redes de Ordenadores subject"
+
+[dependencies]
+structopt = "0.2"
+stderrlog = "0.4"
+log = "0.4"
+mio = "0.6"
+rand = { version = "0.6", features = ["log"] }
+
