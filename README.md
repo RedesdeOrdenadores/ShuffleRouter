@@ -12,7 +12,7 @@ random amount of time —so packets can get reordered or even dropped—.
 
 Received packets **must** carry the destination address in the first four
 bytes of the payload and the destination port as the fifth and sixth byte. All
-of them in network byte order.
+of them in *network byte order*.
 
 ## USAGE:
     shufflerouter [FLAGS] [OPTIONS]
@@ -23,11 +23,11 @@ of them in network byte order.
     -v, --verbose    Verbose level
 
 ### OPTIONS:
-    -d, --drop <drop>              Packet drop probability [default: 0.0]
-    -M, --max_delay <max_delay>    Maximum packet delay, in milliseconds [default: 0]
-    -m, --min_delay <min_delay>    Minimum packet delay, in milliseconds [default: 0]
-    -p, --port <port>              Listening port [default: 2019]
-    -t, --timestamp <ts>           Timestamp (sec, ms, ns, none)
+    -d, --drop <drop>                Packet drop probability [default: 0.0]
+    -m, --min_delay <min_delay>      Minimum packet delay, in milliseconds [default: 0]
+    -p, --port <port>                Listening port [default: 2019]
+    -r, --rand_delay <rand_delay>    Packet delay randomness, in milliseconds [default: 0]
+    -t, --timestamp <ts>             Show log timestamp (sec, ms, ns, none)
 
 ## Legal
 
