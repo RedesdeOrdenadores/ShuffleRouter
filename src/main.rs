@@ -25,7 +25,7 @@ use packet::Packet;
 use queue::Queue;
 
 use mio::net::UdpSocket;
-use rand::Rng;
+use rand::distributions::{Bernoulli, Distribution, Uniform};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::{Duration, Instant};
 use structopt::StructOpt;
@@ -44,15 +44,15 @@ struct Opt {
     #[structopt(short = "m", long = "min_delay", default_value = "0")]
     min_delay: u64,
 
-    /// Maximum packet delay, in milliseconds
-    #[structopt(short = "M", long = "max_delay", default_value = "0")]
-    max_delay: u64,
+    /// Packet delay randomness, in milliseconds
+    #[structopt(short = "r", long = "rand_delay", default_value = "0")]
+    rand_delay: u64,
 
     /// Verbose level
     #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
     verbose: usize,
 
-    /// Timestamp (sec, ms, ns, none)
+    /// Show log timestamp (sec, ms, ns, none)
     #[structopt(short = "t", long = "timestamp")]
     ts: Option<stderrlog::Timestamp>,
 }
@@ -87,14 +87,15 @@ fn main() {
         .init()
         .unwrap();
 
-    if opt.max_delay < opt.min_delay {
-        error!("The maximum delay has to be larger than the minimum one. Exiting.");
-        return;
-    }
+    let drop_distribution = match Bernoulli::new(opt.drop) {
+        Ok(dist) => dist,
+        Err(_) => {
+            error!("{} is not a valid probability value.", opt.drop);
+            return;
+        }
+    };
 
-    if opt.drop < 0.0 || opt.drop > 1.0 {
-        error!("{} is not a valid probability value.", opt.drop);
-    }
+    let delay_distribution = Uniform::new_inclusive(opt.min_delay, opt.min_delay + opt.rand_delay);
 
     let mut rng = rand::thread_rng();
 
@@ -141,25 +142,22 @@ fn main() {
 
                     info!("Received {} bytes from {}", len, addr);
 
-                    if opt.drop < rng.gen() {
-                        let delay = if opt.min_delay == opt.max_delay {
-                            Duration::new(0, 0)
-                        } else {
-                            Duration::from_millis(rng.gen_range(opt.min_delay, opt.max_delay))
-                        };
+                    if drop_distribution.sample(&mut rng) {
+                        info!("Fortuna made me do it. Packet dropped.");
+                    } else {
+                        let frame_delay =
+                            Duration::from_millis(delay_distribution.sample(&mut rng));
 
                         info!(
                             "Packet will be delayed for {} milliseconds",
-                            delay.as_millis()
+                            frame_delay.as_millis()
                         );
 
-                        match Packet::create(&buffer[..len], Instant::now() + delay) {
+                        match Packet::create(&buffer[..len], Instant::now() + frame_delay) {
                             Ok(packet) => queue.push(packet),
                             Err(err) => warn!("{}", err),
                         };
-                    } else {
-                        info!("Fortuna made me do it. Packet dropped.");
-                    }
+                    };
                 }
                 _ => unreachable!(),
             }
