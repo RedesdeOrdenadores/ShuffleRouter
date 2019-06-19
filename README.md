@@ -2,7 +2,7 @@ ShuffleRouter
 =======
 
 [![Build Status](https://travis-ci.org/RedesdeOrdenadores/ShuffleRouter.svg?branch=master)](https://travis-ci.org/RedesdeOrdenadores/ShuffleRouter)
-[![Snap Status](https://build.snapcraft.io/badge/RedesdeOrdenadores/ShuffleRouter.svg)](https://build.snapcraft.io/user/RedesdeOrdenadores/ShuffleRouter)
+[![shufflerouter](https://snapcraft.io/shufflerouter/badge.svg)](https://snapcraft.io/shufflerouter)
 
 A testbed for the practicals of the Redes de Ordenadores subject
 
