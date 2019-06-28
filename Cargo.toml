@@ -10,5 +10,5 @@ structopt = "0.2"
 stderrlog = "0.4"
 log = "0.4"
 mio = "0.6"
-rand = { version = "0.7.0-pre.1", features = ["log"] }
+rand = { version = "0.7", features = ["log"] }
 
