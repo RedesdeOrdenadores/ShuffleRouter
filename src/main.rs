@@ -31,6 +31,7 @@ use std::time::{Duration, Instant};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
+#[structopt(author, about)]
 struct Opt {
     /// Listening port
     #[structopt(short = "p", long = "port", default_value = "2019")]
