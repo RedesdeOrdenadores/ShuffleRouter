@@ -31,7 +31,15 @@ use std::time::{Duration, Instant};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(author, about)]
+/// Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
+/// A suffling router for Redes de Ordenadores subject
+///
+/// This is a simple echo server that redirects received UDP packets after a
+/// random amount of time —so packets can get reordered or even dropped—.
+///
+///  Received packets must carry the destination address in the first four
+///  bytes of the payload and the destination port as the fifth and sixth
+///  byte. All of them in network byte order.
 struct Opt {
     /// Listening port
     #[structopt(short = "p", long = "port", default_value = "2019")]
