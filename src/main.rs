@@ -152,7 +152,7 @@ fn main() {
                     info!("Received {} bytes from {}", len, addr);
 
                     if drop_distribution.sample(&mut rng) {
-                        info!("Fortuna made me do it. Packet dropped.");
+                        info!("Τύχη decided it. Packet dropped.");
                     } else {
                         let frame_delay =
                             Duration::from_millis(delay_distribution.sample(&mut rng));
