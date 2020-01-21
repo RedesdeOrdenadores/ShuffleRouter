@@ -129,7 +129,7 @@ fn main() {
     )
     .unwrap();
 
-    let mut events = mio::Events::with_capacity(32); // Just a few to interlate transmissions if needed
+    let mut events = mio::Events::with_capacity(32); // Just a few to store those received while transmiitting if needed
 
     loop {
         process_queue(&mut queue, &socket);
