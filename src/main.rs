@@ -147,9 +147,10 @@ fn main() {
     ).unwrap();
     
     let mut events = mio::Events::with_capacity(32); // Just a few to store those received while transmiitting if needed
+    let mut bytes_sent = 0;
 
     loop {
-        process_queue(&mut queue, &socket);
+        bytes_sent += process_queue(&mut queue, &socket);
 
         let max_delay = match queue.peek() {
             None => None,
@@ -186,6 +187,7 @@ fn main() {
                     };
                 }
 		SIGTERM => {
+		    info!("{} bytes sent during latest execution.", bytes_sent);
 		    return;
 		}
                 _ => unreachable!(),
