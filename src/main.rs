@@ -70,22 +70,29 @@ struct Opt {
 const RECEIVER: mio::Token = mio::Token(0);
 const SIGTERM: mio::Token = mio::Token(1);
 
-fn process_queue(queue: &mut Queue, socket: &UdpSocket) {
-    while queue
+fn process_queue(queue: &mut Queue, socket: &UdpSocket) -> usize {
+    let mut bytes_sent = 0;
+
+     while queue
         .peek()
         .map_or(false, |p| p.exit_time <= Instant::now())
     {
+	
         let p = queue.pop().unwrap();
-        match socket.send_to(&p.data, &p.dst) {
-            Ok(len) => info!("Sent {} bytes to {}", len, p.dst),
-            Err(e) => warn!(
+        bytes_sent += match socket.send_to(&p.data, &p.dst) {
+            Ok(len) => {
+		info!("Sent {} bytes to {}", len, p.dst);
+		len},
+            Err(e) => {warn!(
                 "Error transmitting {} bytes to {}: {}",
                 p.data.len(),
                 p.dst,
                 e
-            ),
-        }
+            );0},
+        };
     }
+
+    bytes_sent
 }
 
 fn main() {
