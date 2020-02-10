@@ -11,4 +11,5 @@ stderrlog = "0.4"
 log = "0.4"
 mio = "0.6"
 rand = { version = "0.7", features = ["log"] }
+signal-hook = { version = "0.1", features = ["mio-support"] }
 

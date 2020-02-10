@@ -29,6 +29,7 @@ use rand::distributions::{Bernoulli, Distribution, Uniform};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::{Duration, Instant};
 use structopt::StructOpt;
+use signal_hook::iterator::Signals;
 
 #[derive(StructOpt, Debug)]
 /// Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
@@ -67,6 +68,7 @@ struct Opt {
 }
 
 const RECEIVER: mio::Token = mio::Token(0);
+const SIGTERM: mio::Token = mio::Token(1);
 
 fn process_queue(queue: &mut Queue, socket: &UdpSocket) {
     while queue
@@ -129,6 +131,14 @@ fn main() {
     )
     .unwrap();
 
+    let signals = Signals::new(&[signal_hook::SIGTERM, signal_hook::SIGINT]).expect("Could not capture TERM signal.");
+    poll.register(
+	&signals,
+	SIGTERM,
+	mio::Ready::readable(),
+        mio::PollOpt::level(),
+    ).unwrap();
+    
     let mut events = mio::Events::with_capacity(32); // Just a few to store those received while transmiitting if needed
 
     loop {
@@ -168,6 +178,9 @@ fn main() {
                         };
                     };
                 }
+		SIGTERM => {
+		    return;
+		}
                 _ => unreachable!(),
             }
         }
