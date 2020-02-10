@@ -36,7 +36,7 @@ use signal_hook::iterator::Signals;
 /// A suffling router for Redes de Ordenadores subject
 ///
 /// This is a simple echo server that redirects received UDP packets after a
-/// random amount of time —so packets can get reordered or even dropped—.
+/// random amount of time—so packets can get reordered or even dropped—.
 ///
 ///  Received packets must carry the destination address in the first four
 ///  bytes of the payload and the destination port as the fifth and sixth
