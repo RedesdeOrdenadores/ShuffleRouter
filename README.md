@@ -32,7 +32,7 @@ of them in *network byte order*.
 
 ## Legal
 
-Copyright ⓒ 2019 Miguel Rodríguez Pérez <miguel@det.uvigo.gal>.
+Copyright ⓒ 2019–2020 Miguel Rodríguez Pérez <miguel@det.uvigo.gal>.
 
 This simulator is licensed under the GNU General Public License, version 3
 (GPL-3.0). For information see LICENSE
