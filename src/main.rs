@@ -134,7 +134,7 @@ fn main() {
         &socket,
         RECEIVER,
         mio::Ready::readable(),
-        mio::PollOpt::edge(),
+        mio::PollOpt::level(),
     )
     .unwrap();
 
