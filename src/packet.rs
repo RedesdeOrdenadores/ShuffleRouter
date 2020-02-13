@@ -77,12 +77,6 @@ impl Packet {
     }
 
     pub fn get_duration_till_next(&self) -> Option<Duration> {
-        let now = Instant::now();
-
-        if now > self.exit_time {
-            None
-        } else {
-            Some(self.exit_time.duration_since(now))
-        }
+        Some(self.exit_time.saturating_duration_since(Instant::now()))
     }
 }
