@@ -67,9 +67,8 @@ struct Opt {
     ts: Option<stderrlog::Timestamp>,
 }
 
-const RECEIVER: mio::Token = mio::Token(0);
+const SOCKACT: mio::Token = mio::Token(0);
 const SIGTERM: mio::Token = mio::Token(1);
-const SENDER: mio::Token = mio::Token(2);
 
 fn process_queue(queue: &mut Queue, socket: &UdpSocket) -> usize {
     let p = queue.peek().unwrap();
@@ -129,7 +128,7 @@ fn main() {
     let poll = mio::Poll::new().unwrap();
     poll.register(
         &socket,
-        RECEIVER,
+        SOCKACT,
         mio::Ready::readable(),
         mio::PollOpt::level(),
     )
@@ -156,7 +155,7 @@ fn main() {
 
         poll.reregister(
             &socket,
-            RECEIVER,
+            SOCKACT,
             mio::Ready::readable(),
             mio::PollOpt::level(),
         )
@@ -166,8 +165,8 @@ fn main() {
             if packet.exit_time <= Instant::now() {
                 poll.reregister(
                     &socket,
-                    SENDER,
-                    mio::Ready::writable(),
+                    SOCKACT,
+                    mio::Ready::readable() | mio::Ready::writable(),
                     mio::PollOpt::level(),
                 )
                 .unwrap();
@@ -179,32 +178,35 @@ fn main() {
 
         for event in events.iter() {
             match event.token() {
-                RECEIVER => {
-                    let (len, addr) = socket
-                        .recv_from(&mut buffer)
-                        .expect("Error while reading datagram.");
+                SOCKACT => {
+                    if event.readiness() & mio::Ready::writable() == mio::Ready::writable() {
+                        bytes_sent += process_queue(&mut queue, &socket);
+                    }
 
-                    info!("Received {} bytes from {}", len, addr);
+                    if event.readiness() & mio::Ready::readable() == mio::Ready::readable() {
+                        let (len, addr) = socket
+                            .recv_from(&mut buffer)
+                            .expect("Error while reading datagram.");
 
-                    if drop_distribution.sample(&mut rng) {
-                        info!("Τύχη decided it. Packet dropped.");
-                    } else {
-                        let frame_delay =
-                            Duration::from_millis(delay_distribution.sample(&mut rng));
+                        info!("Received {} bytes from {}", len, addr);
 
-                        info!(
-                            "Packet will be delayed for {} milliseconds",
-                            frame_delay.as_millis()
-                        );
+                        if drop_distribution.sample(&mut rng) {
+                            info!("Τύχη decided it. Packet dropped.");
+                        } else {
+                            let frame_delay =
+                                Duration::from_millis(delay_distribution.sample(&mut rng));
 
-                        match Packet::create(&buffer[..len], Instant::now() + frame_delay) {
-                            Ok(packet) => queue.push(packet),
-                            Err(err) => warn!("{}", err),
+                            info!(
+                                "Packet will be delayed for {} milliseconds",
+                                frame_delay.as_millis()
+                            );
+
+                            match Packet::create(&buffer[..len], Instant::now() + frame_delay) {
+                                Ok(packet) => queue.push(packet),
+                                Err(err) => warn!("{}", err),
+                            };
                         };
-                    };
-                }
-                SENDER => {
-                    bytes_sent += process_queue(&mut queue, &socket);
+                    }
                 }
                 SIGTERM => {
                     info!("{} bytes sent during latest execution.", bytes_sent);
