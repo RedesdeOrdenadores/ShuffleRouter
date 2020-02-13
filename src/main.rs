@@ -69,30 +69,27 @@ struct Opt {
 
 const RECEIVER: mio::Token = mio::Token(0);
 const SIGTERM: mio::Token = mio::Token(1);
+const SENDER: mio::Token = mio::Token(2);
 
 fn process_queue(queue: &mut Queue, socket: &UdpSocket) -> usize {
-    let mut bytes_sent = 0;
+    let p = queue.peek().unwrap();
 
-     while queue
-        .peek()
-        .map_or(false, |p| p.exit_time <= Instant::now())
-    {
-	
-        let p = queue.pop().unwrap();
-        bytes_sent += match socket.send_to(&p.data, &p.dst) {
-            Ok(len) => {
-		info!("Sent {} bytes to {}", len, p.dst);
-		len},
-            Err(e) => {warn!(
+    match socket.send_to(&p.data, &p.dst) {
+        Ok(len) => {
+            info!("Sent {} bytes to {}", len, p.dst);
+            queue.pop();
+            len
+        }
+        Err(e) => {
+            warn!(
                 "Error transmitting {} bytes to {}: {}",
                 p.data.len(),
                 p.dst,
                 e
-            );0},
-        };
+            );
+            0
+        }
     }
-
-    bytes_sent
 }
 
 fn main() {
@@ -138,24 +135,44 @@ fn main() {
     )
     .unwrap();
 
-    let signals = Signals::new(&[signal_hook::SIGTERM, signal_hook::SIGINT]).expect("Could not capture TERM signal.");
+    let signals = Signals::new(&[signal_hook::SIGTERM, signal_hook::SIGINT])
+        .expect("Could not capture TERM signal.");
     poll.register(
-	&signals,
-	SIGTERM,
-	mio::Ready::readable(),
+        &signals,
+        SIGTERM,
+        mio::Ready::readable(),
         mio::PollOpt::level(),
-    ).unwrap();
-    
+    )
+    .unwrap();
+
     let mut events = mio::Events::with_capacity(32); // Just a few to store those received while transmiitting if needed
     let mut bytes_sent = 0;
 
     loop {
-        bytes_sent += process_queue(&mut queue, &socket);
-
         let max_delay = match queue.peek() {
             None => None,
             Some(packet) => packet.get_duration_till_next(),
         };
+
+        poll.reregister(
+            &socket,
+            RECEIVER,
+            mio::Ready::readable(),
+            mio::PollOpt::level(),
+        )
+        .unwrap();
+
+        if let Some(packet) = queue.peek() {
+            if packet.exit_time <= Instant::now() {
+                poll.reregister(
+                    &socket,
+                    SENDER,
+                    mio::Ready::writable(),
+                    mio::PollOpt::level(),
+                )
+                .unwrap();
+            }
+        }
 
         poll.poll(&mut events, max_delay)
             .expect("Error while polling socket");
@@ -186,10 +203,13 @@ fn main() {
                         };
                     };
                 }
-		SIGTERM => {
-		    info!("{} bytes sent during latest execution.", bytes_sent);
-		    return;
-		}
+                SENDER => {
+                    bytes_sent += process_queue(&mut queue, &socket);
+                }
+                SIGTERM => {
+                    info!("{} bytes sent during latest execution.", bytes_sent);
+                    return;
+                }
                 _ => unreachable!(),
             }
         }
