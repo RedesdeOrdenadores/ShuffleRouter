@@ -26,10 +26,10 @@ use queue::Queue;
 
 use mio::net::UdpSocket;
 use rand::distributions::{Bernoulli, Distribution, Uniform};
+use signal_hook::iterator::Signals;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::{Duration, Instant};
 use structopt::StructOpt;
-use signal_hook::iterator::Signals;
 
 #[derive(StructOpt, Debug)]
 /// Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
