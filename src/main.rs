@@ -71,24 +71,36 @@ const SOCKACT: mio::Token = mio::Token(0);
 const SIGTERM: mio::Token = mio::Token(1);
 
 fn process_queue(queue: &mut Queue, socket: &UdpSocket) -> usize {
-    let p = queue.peek().unwrap();
+    let mut bytes_sent = 0;
 
-    match socket.send_to(&p.data, &p.dst) {
-        Ok(len) => {
-            info!("Sent {} bytes to {}", len, p.dst);
-            queue.pop();
-            len
-        }
-        Err(e) => {
-            warn!(
-                "Error transmitting {} bytes to {}: {}",
-                p.data.len(),
-                p.dst,
-                e
-            );
-            0
-        }
+    while queue
+        .peek()
+        .map_or(false, |p| p.exit_time <= Instant::now())
+    {
+        let p = queue.peek().unwrap();
+        bytes_sent += match socket.send_to(&p.data, &p.dst) {
+            Ok(len) => {
+                info!("Sent {} bytes to {}", len, p.dst);
+                queue.pop(); // Only remove transmitted packets
+                len
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                // We can not send more data without blocking
+                break;
+            }
+            Err(e) => {
+                warn!(
+                    "Error transmitting {} bytes to {}: {}",
+                    p.data.len(),
+                    p.dst,
+                    e
+                );
+                0
+            }
+        };
     }
+
+    bytes_sent
 }
 
 fn main() {
@@ -184,28 +196,39 @@ fn main() {
                     }
 
                     if event.readiness() & mio::Ready::readable() == mio::Ready::readable() {
-                        let (len, addr) = socket
-                            .recv_from(&mut buffer)
-                            .expect("Error while reading datagram.");
+                        loop {
+                            // Get all pending packets
+                            let (len, addr) = match socket.recv_from(&mut buffer) {
+                                Ok((len, addr)) => (len, addr),
 
-                        info!("Received {} bytes from {}", len, addr);
-
-                        if drop_distribution.sample(&mut rng) {
-                            info!("Τύχη decided it. Packet dropped.");
-                        } else {
-                            let frame_delay =
-                                Duration::from_millis(delay_distribution.sample(&mut rng));
-
-                            info!(
-                                "Packet will be delayed for {} milliseconds",
-                                frame_delay.as_millis()
-                            );
-
-                            match Packet::create(&buffer[..len], Instant::now() + frame_delay) {
-                                Ok(packet) => queue.push(packet),
-                                Err(err) => warn!("{}", err),
+                                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                    // We can not read more data without blocking
+                                    break;
+                                }
+                                Err(_) => {
+                                    panic!("Error while reading datagram.");
+                                }
                             };
-                        };
+
+                            info!("Received {} bytes from {}", len, addr);
+
+                            if drop_distribution.sample(&mut rng) {
+                                info!("Τύχη decided it. Packet dropped.");
+                            } else {
+                                let frame_delay =
+                                    Duration::from_millis(delay_distribution.sample(&mut rng));
+
+                                info!(
+                                    "Packet will be delayed for {} milliseconds",
+                                    frame_delay.as_millis()
+                                );
+
+                                match Packet::create(&buffer[..len], Instant::now() + frame_delay) {
+                                    Ok(packet) => queue.push(packet),
+                                    Err(err) => warn!("{}", err),
+                                };
+                            };
+                        }
                     }
                 }
                 SIGTERM => {
