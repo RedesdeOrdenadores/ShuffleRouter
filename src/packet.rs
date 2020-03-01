@@ -17,12 +17,12 @@
 
 use std::cmp::Ordering;
 use std::convert::TryInto;
-use std::net;
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::time::{Duration, Instant};
 
 #[derive(Debug)]
 pub struct Packet {
-    pub dst: net::SocketAddr,
+    pub dst: SocketAddrV4,
     pub data: Vec<u8>,
     pub exit_time: Instant,
 }
@@ -47,7 +47,7 @@ impl PartialOrd for Packet {
     }
 }
 
-fn get_dst(data: &[u8]) -> Result<net::SocketAddr, String> {
+fn get_dst(data: &[u8]) -> Result<SocketAddrV4, String> {
     if data.len() < 6 {
         return Err(format!(
             "Only {} bytes in received data. Minimum is six for IP + port",
@@ -64,19 +64,30 @@ fn get_dst(data: &[u8]) -> Result<net::SocketAddr, String> {
             .map_err(|_| "Could not extract destination port")?,
     );
 
-    Ok(net::SocketAddr::from((addr_bytes, port)))
+    Ok(SocketAddrV4::new(Ipv4Addr::from(addr_bytes), port))
 }
 
 impl Packet {
-    pub fn create(data: &[u8], exit_time: Instant) -> Result<Packet, String> {
+    pub fn create(orig: &SocketAddrV4, data: &[u8], exit_time: Instant) -> Result<Packet, String> {
         Ok(Packet {
             dst: get_dst(data)?,
-            data: Vec::from(&data[6..]),
+            data: orig
+                .ip()
+                .octets()
+                .iter()
+                .chain(orig.port().to_be_bytes().iter())
+                .chain(&data[6..])
+                .copied()
+                .collect(),
             exit_time,
         })
     }
 
     pub fn get_duration_till_next(&self) -> Option<Duration> {
         Some(self.exit_time.saturating_duration_since(Instant::now()))
+    }
+
+    pub fn dst(&self) -> SocketAddr {
+        SocketAddr::from(self.dst)
     }
 }

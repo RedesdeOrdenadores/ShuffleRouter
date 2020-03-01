@@ -13,7 +13,8 @@ random amount of time —so packets can get reordered or even dropped—.
 
 Received packets **must** carry the destination address in the first four
 bytes of the payload and the destination port as the fifth and sixth byte. All
-of them in *network byte order*.
+of them in *network byte order*. Packets are forwarded with the first six
+bytes replaces by the sender-s IP address and port.
 
 ## USAGE:
     shufflerouter [FLAGS] [OPTIONS]

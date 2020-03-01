@@ -78,7 +78,7 @@ fn process_queue(queue: &mut Queue, socket: &UdpSocket) -> usize {
         .map_or(false, |p| p.exit_time <= Instant::now())
     {
         let p = queue.peek().unwrap();
-        bytes_sent += match socket.send_to(&p.data, &p.dst) {
+        bytes_sent += match socket.send_to(&p.data, &p.dst()) {
             Ok(len) => {
                 info!("Sent {} bytes to {}", len, p.dst);
                 queue.pop(); // Only remove transmitted packets
@@ -199,13 +199,16 @@ fn main() {
                         loop {
                             // Get all pending packets
                             let (len, addr) = match socket.recv_from(&mut buffer) {
-                                Ok((len, addr)) => (len, addr),
+                                Ok((len, addr)) => match addr {
+                                    SocketAddr::V4(addrv4) => (len, addrv4),
+                                    _ => panic!("Unimplemented"),
+                                },
 
                                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                                     // We can not read more data without blocking
                                     break;
                                 }
-                                Err(_) => {
+                                _ => {
                                     panic!("Error while reading datagram.");
                                 }
                             };
@@ -223,7 +226,11 @@ fn main() {
                                     frame_delay.as_millis()
                                 );
 
-                                match Packet::create(&buffer[..len], Instant::now() + frame_delay) {
+                                match Packet::create(
+                                    &addr,
+                                    &buffer[..len],
+                                    Instant::now() + frame_delay,
+                                ) {
                                     Ok(packet) => queue.push(packet),
                                     Err(err) => warn!("{}", err),
                                 };
