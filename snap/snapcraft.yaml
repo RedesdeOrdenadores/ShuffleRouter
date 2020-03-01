@@ -1,5 +1,5 @@
 name: shufflerouter
-version: 0.9.8
+version: 1.1.0
 summary: A testbet for the Redes de Ordenadores Subject Practical Assigment
 
 description: |
@@ -10,7 +10,8 @@ description: |
   Received packets must carry the destination address in
   the first four bytes of the payload and the destination
   port as the fifth and sixth byte. All of them in
-  network byte order.
+  network byte order. Packets are forwarded with the first six
+  bytes replaces by the sender-s IP address and port.
 
 confinement: strict
 base: core18
