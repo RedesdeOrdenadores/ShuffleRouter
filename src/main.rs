@@ -70,17 +70,17 @@ struct Opt {
 const SOCKACT: mio::Token = mio::Token(0);
 const SIGTERM: mio::Token = mio::Token(1);
 
-fn process_queue(queue: &mut Queue, socket: &UdpSocket) -> usize {
+fn process_queue(queue: &mut Queue, socket: &UdpSocket) -> (usize, Duration) {
     let mut bytes_sent = 0;
+    let mut extra_delay = Duration::new(0, 0);
+    let now = Instant::now();
 
-    while queue
-        .peek()
-        .map_or(false, |p| p.exit_time <= Instant::now())
-    {
+    while queue.peek().map_or(false, |p| p.exit_time <= now) {
         let p = queue.peek().unwrap();
         bytes_sent += match socket.send_to(&p.data, &p.dst()) {
             Ok(len) => {
                 info!("Sent {} bytes to {}", len, p.dst);
+                extra_delay += now - p.exit_time;
                 queue.pop(); // Only remove transmitted packets
                 len
             }
@@ -100,7 +100,7 @@ fn process_queue(queue: &mut Queue, socket: &UdpSocket) -> usize {
         };
     }
 
-    bytes_sent
+    (bytes_sent, extra_delay)
 }
 
 fn main() {
@@ -158,11 +158,16 @@ fn main() {
 
     let mut events = mio::Events::with_capacity(32); // Just a few to store those received while transmiitting if needed
     let mut bytes_sent = 0;
+    let mut extra_delay = Duration::new(0, 0);
 
     loop {
         let max_delay = match queue.peek() {
             None => None,
-            Some(packet) => packet.get_duration_till_next(),
+            Some(packet) => match packet.get_duration_till_next() {
+                Some(delay) if delay > extra_delay => Some(delay - extra_delay),
+                Some(_delay) => Some(Duration::new(0, 0)),
+                None => None,
+            },
         };
 
         poll.reregister(
@@ -192,7 +197,9 @@ fn main() {
             match event.token() {
                 SOCKACT => {
                     if event.readiness() & mio::Ready::writable() == mio::Ready::writable() {
-                        bytes_sent += process_queue(&mut queue, &socket);
+                        let (bytes, delay) = process_queue(&mut queue, &socket);
+                        bytes_sent += bytes;
+                        extra_delay += delay;
                     }
 
                     if event.readiness() & mio::Ready::readable() == mio::Ready::readable() {
