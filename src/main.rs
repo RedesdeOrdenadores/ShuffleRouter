@@ -79,7 +79,7 @@ fn process_queue(queue: &mut Queue, socket: &UdpSocket) -> (usize, Duration) {
         let p = queue.peek().unwrap();
         bytes_sent += match socket.send_to(&p.data, &p.dst()) {
             Ok(len) => {
-                info!("Sent {} bytes to {}", len, p.dst);
+                debug!("Sent {} bytes to {}", len, p.dst);
                 extra_delay += now - p.exit_time;
                 queue.pop(); // Only remove transmitted packets
                 len
@@ -220,7 +220,7 @@ fn main() {
                                 }
                             };
 
-                            info!("Received {} bytes from {}", len, addr);
+                            debug!("Received {} bytes from {}", len, addr);
 
                             if drop_distribution.sample(&mut rng) {
                                 info!("Τύχη decided it. Packet dropped.");
