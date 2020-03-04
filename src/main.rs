@@ -25,6 +25,7 @@ use packet::Packet;
 use queue::Queue;
 
 use mio::net::UdpSocket;
+use num_format::{SystemLocale, ToFormattedString};
 use rand::distributions::{Bernoulli, Distribution, Uniform};
 use signal_hook::iterator::Signals;
 use std::net::{Ipv4Addr, SocketAddr};
@@ -246,7 +247,14 @@ fn main() {
                     }
                 }
                 SIGTERM => {
-                    info!("{} bytes sent during latest execution.", bytes_sent);
+                    let locale = match SystemLocale::default() {
+                        Ok(locale) => locale,
+                        Err(_) => SystemLocale::from_name("C").unwrap(),
+                    };
+                    println!(
+                        "\n{} bytes sent during latest execution.",
+                        bytes_sent.to_formatted_string(&locale)
+                    );
                     return;
                 }
                 _ => unreachable!(),
