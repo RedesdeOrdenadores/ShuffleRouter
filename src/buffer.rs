@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const MAX_BUFFER_SIZE: usize = u16::max_value() as usize;
+const MAX_BUFFER_SIZE: usize = 1500;
 
 #[derive(Clone)]
 pub struct Buffer {
