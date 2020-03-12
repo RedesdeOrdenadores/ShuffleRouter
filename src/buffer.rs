@@ -19,7 +19,7 @@ const MAX_BUFFER_SIZE: usize = u16::max_value() as usize;
 
 #[derive(Clone)]
 pub struct Buffer {
-    buf: [u8; u16::max_value() as usize],
+    buf: [u8; MAX_BUFFER_SIZE],
     len: usize,
 }
 
