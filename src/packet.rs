@@ -83,8 +83,8 @@ impl Packet {
         })
     }
 
-    pub fn get_duration_till_next(&self) -> Option<Duration> {
-        Some(self.exit_time.saturating_duration_since(Instant::now()))
+    pub fn get_duration_till_next(&self, now: Instant) -> Option<Duration> {
+        Some(self.exit_time.saturating_duration_since(now))
     }
 
     pub fn dst(&self) -> SocketAddr {

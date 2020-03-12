@@ -162,9 +162,10 @@ fn main() {
     let mut extra_delay = Duration::new(0, 0);
 
     loop {
+        let now = Instant::now();
         let max_delay = match queue.peek() {
             None => None,
-            Some(packet) => match packet.get_duration_till_next() {
+            Some(packet) => match packet.get_duration_till_next(now) {
                 Some(delay) if delay > extra_delay => Some(delay - extra_delay),
                 Some(_delay) => Some(Duration::new(0, 0)),
                 None => None,
@@ -180,7 +181,7 @@ fn main() {
         .unwrap();
 
         if let Some(packet) = queue.peek() {
-            if packet.exit_time <= Instant::now() {
+            if packet.exit_time <= now {
                 poll.reregister(
                     &socket,
                     SOCKACT,
