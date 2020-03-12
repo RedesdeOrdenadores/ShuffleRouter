@@ -18,11 +18,8 @@
 #[macro_use]
 extern crate log;
 
-mod packet;
-mod queue;
-
-use packet::Packet;
-use queue::Queue;
+use shufflerouter::packet::Packet;
+use shufflerouter::queue::Queue;
 
 use mio::net::UdpSocket;
 use num_format::{SystemLocale, ToFormattedString};
