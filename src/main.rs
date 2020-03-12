@@ -69,13 +69,8 @@ struct Opt {
 const SOCKACT: mio::Token = mio::Token(0);
 const SIGTERM: mio::Token = mio::Token(1);
 
-fn process_queue(
-    queue: &mut Queue,
-    socket: &UdpSocket,
-    buffer_pool: &mut BufferPool,
-) -> (usize, Duration) {
+fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut BufferPool) -> usize {
     let mut bytes_sent = 0;
-    let mut extra_delay = Duration::new(0, 0);
     let now = Instant::now();
 
     while queue.peek().map_or(false, |p| p.exit_time <= now) {
@@ -83,7 +78,6 @@ fn process_queue(
         bytes_sent += match socket.send_to(p.data.get(), &p.dst()) {
             Ok(len) => {
                 debug!("Sent {} bytes to {}", len, p.dst);
-                extra_delay += now - p.exit_time;
                 buffer_pool.recycle_byffer(queue.pop().unwrap().data); // Only remove transmitted packets
                 len
             }
@@ -103,7 +97,7 @@ fn process_queue(
         };
     }
 
-    (bytes_sent, extra_delay)
+    bytes_sent
 }
 
 fn main() {
@@ -159,7 +153,6 @@ fn main() {
 
     let mut events = mio::Events::with_capacity(32); // Just a few to store those received while transmiitting if needed
     let mut bytes_sent = 0;
-    let mut extra_delay = Duration::new(0, 0);
     let mut buffer_pool = BufferPool::default();
 
     loop {
@@ -167,8 +160,7 @@ fn main() {
         let max_delay = match queue.peek() {
             None => None,
             Some(packet) => match packet.get_duration_till_next(now) {
-                Some(delay) if delay > extra_delay => Some(delay - extra_delay),
-                Some(_delay) => Some(Duration::new(0, 0)),
+                Some(delay) => Some(delay),
                 None => None,
             },
         };
@@ -176,22 +168,15 @@ fn main() {
         poll.reregister(
             &socket,
             SOCKACT,
-            mio::Ready::readable(),
+            match queue.peek() {
+                Some(packet) if packet.exit_time <= now => {
+                    mio::Ready::readable() | mio::Ready::writable()
+                }
+                _ => mio::Ready::readable(),
+            },
             mio::PollOpt::level(),
         )
         .unwrap();
-
-        if let Some(packet) = queue.peek() {
-            if packet.exit_time <= now {
-                poll.reregister(
-                    &socket,
-                    SOCKACT,
-                    mio::Ready::readable() | mio::Ready::writable(),
-                    mio::PollOpt::level(),
-                )
-                .unwrap();
-            }
-        }
 
         poll.poll(&mut events, max_delay)
             .expect("Error while polling socket");
@@ -199,13 +184,11 @@ fn main() {
         for event in events.iter() {
             match event.token() {
                 SOCKACT => {
-                    if event.readiness() & mio::Ready::writable() == mio::Ready::writable() {
-                        let (bytes, delay) = process_queue(&mut queue, &socket, &mut buffer_pool);
-                        bytes_sent += bytes;
-                        extra_delay += delay;
+                    if (event.readiness() & mio::Ready::writable()) == mio::Ready::writable() {
+                        bytes_sent += process_queue(&mut queue, &socket, &mut buffer_pool);
                     }
 
-                    if event.readiness() & mio::Ready::readable() == mio::Ready::readable() {
+                    if (event.readiness() & mio::Ready::readable()) == mio::Ready::readable() {
                         loop {
                             // Get all pending packets
                             let mut buffer = buffer_pool.get_buffer();
