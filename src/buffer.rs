@@ -23,6 +23,7 @@ pub struct Buffer {
     len: usize,
 }
 
+#[allow(clippy::len_without_is_empty)]
 impl Buffer {
     pub fn get_mut(&mut self) -> &mut [u8; MAX_BUFFER_SIZE] {
         &mut self.buf
