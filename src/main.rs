@@ -18,6 +18,7 @@
 #[macro_use]
 extern crate log;
 
+use shufflerouter::buffer::BufferPool;
 use shufflerouter::packet::Packet;
 use shufflerouter::queue::Queue;
 
@@ -68,18 +69,22 @@ struct Opt {
 const SOCKACT: mio::Token = mio::Token(0);
 const SIGTERM: mio::Token = mio::Token(1);
 
-fn process_queue(queue: &mut Queue, socket: &UdpSocket) -> (usize, Duration) {
+fn process_queue(
+    queue: &mut Queue,
+    socket: &UdpSocket,
+    buffer_pool: &mut BufferPool,
+) -> (usize, Duration) {
     let mut bytes_sent = 0;
     let mut extra_delay = Duration::new(0, 0);
     let now = Instant::now();
 
     while queue.peek().map_or(false, |p| p.exit_time <= now) {
         let p = queue.peek().unwrap();
-        bytes_sent += match socket.send_to(&p.data, &p.dst()) {
+        bytes_sent += match socket.send_to(p.data.get(), &p.dst()) {
             Ok(len) => {
                 debug!("Sent {} bytes to {}", len, p.dst);
                 extra_delay += now - p.exit_time;
-                queue.pop(); // Only remove transmitted packets
+                buffer_pool.recycle_byffer(queue.pop().unwrap().data); // Only remove transmitted packets
                 len
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -133,8 +138,6 @@ fn main() {
 
     let mut queue = Queue::new();
 
-    let mut buffer = [0; u16::max_value() as usize];
-
     let poll = mio::Poll::new().unwrap();
     poll.register(
         &socket,
@@ -157,6 +160,7 @@ fn main() {
     let mut events = mio::Events::with_capacity(32); // Just a few to store those received while transmiitting if needed
     let mut bytes_sent = 0;
     let mut extra_delay = Duration::new(0, 0);
+    let mut buffer_pool = BufferPool::default();
 
     loop {
         let now = Instant::now();
@@ -196,7 +200,7 @@ fn main() {
             match event.token() {
                 SOCKACT => {
                     if event.readiness() & mio::Ready::writable() == mio::Ready::writable() {
-                        let (bytes, delay) = process_queue(&mut queue, &socket);
+                        let (bytes, delay) = process_queue(&mut queue, &socket, &mut buffer_pool);
                         bytes_sent += bytes;
                         extra_delay += delay;
                     }
@@ -204,7 +208,8 @@ fn main() {
                     if event.readiness() & mio::Ready::readable() == mio::Ready::readable() {
                         loop {
                             // Get all pending packets
-                            let (len, addr) = match socket.recv_from(&mut buffer) {
+                            let mut buffer = buffer_pool.get_buffer();
+                            let (len, addr) = match socket.recv_from(buffer.get_mut()) {
                                 Ok((len, addr)) => match addr {
                                     SocketAddr::V4(addrv4) => (len, addrv4),
                                     _ => panic!("Unimplemented"),
@@ -234,7 +239,8 @@ fn main() {
 
                                 match Packet::create(
                                     &addr,
-                                    &buffer[..len],
+                                    buffer,
+                                    len,
                                     Instant::now() + frame_delay,
                                 ) {
                                     Ok(packet) => queue.push(packet),

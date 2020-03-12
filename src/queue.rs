@@ -19,7 +19,7 @@ use crate::packet::Packet;
 
 use std::collections::binary_heap;
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Queue {
     queue: binary_heap::BinaryHeap<Packet>,
 }

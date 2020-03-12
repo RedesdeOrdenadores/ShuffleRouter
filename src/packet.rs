@@ -15,15 +15,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use super::buffer::Buffer;
 use std::cmp::Ordering;
 use std::convert::TryInto;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::time::{Duration, Instant};
 
-#[derive(Debug)]
 pub struct Packet {
     pub dst: SocketAddrV4,
-    pub data: Vec<u8>,
+    pub data: Buffer,
     pub exit_time: Instant,
 }
 
@@ -68,17 +68,21 @@ fn get_dst(data: &[u8]) -> Result<SocketAddrV4, String> {
 }
 
 impl Packet {
-    pub fn create(orig: &SocketAddrV4, data: &[u8], exit_time: Instant) -> Result<Packet, String> {
+    pub fn create(
+        orig: &SocketAddrV4,
+        mut data: Buffer,
+        len: usize,
+        exit_time: Instant,
+    ) -> Result<Packet, String> {
+        let dst = get_dst(data.get())?;
+
+        data.get_mut()[..4].copy_from_slice(&orig.ip().octets());
+        data.get_mut()[4..6].copy_from_slice(&orig.port().to_be_bytes());
+        data.set_len(len);
+
         Ok(Packet {
-            dst: get_dst(data)?,
-            data: orig
-                .ip()
-                .octets()
-                .iter()
-                .chain(orig.port().to_be_bytes().iter())
-                .chain(&data[6..])
-                .copied()
-                .collect(),
+            dst,
+            data,
             exit_time,
         })
     }
