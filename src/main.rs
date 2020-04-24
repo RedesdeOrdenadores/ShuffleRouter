@@ -24,6 +24,7 @@ use shufflerouter::queue::Queue;
 
 use mio::net::UdpSocket;
 use mio::{Interest, Token};
+use mio_signals::{Signal, Signals};
 use num_format::{SystemLocale, ToFormattedString};
 use rand::distributions::{Bernoulli, Distribution, Uniform};
 use std::net::{Ipv4Addr, SocketAddr};
@@ -133,6 +134,13 @@ fn main() {
     let mut queue = Queue::new();
 
     let mut poll = mio::Poll::new().unwrap();
+
+    let mut signals = Signals::new(Signal::Interrupt | Signal::Quit).unwrap();
+
+    poll.registry()
+        .register(&mut signals, SIGTERM, Interest::READABLE)
+        .unwrap();
+
     poll.registry()
         .register(&mut socket, SOCKACT, Interest::READABLE)
         .unwrap();
