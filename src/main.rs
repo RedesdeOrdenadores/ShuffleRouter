@@ -23,6 +23,7 @@ use shufflerouter::packet::Packet;
 use shufflerouter::queue::Queue;
 
 use mio::net::UdpSocket;
+use mio::{Interest, Token};
 use num_format::{SystemLocale, ToFormattedString};
 use rand::distributions::{Bernoulli, Distribution, Uniform};
 use std::net::{Ipv4Addr, SocketAddr};
@@ -65,8 +66,8 @@ struct Opt {
     ts: Option<stderrlog::Timestamp>,
 }
 
-const SOCKACT: mio::Token = mio::Token(0);
-const SIGTERM: mio::Token = mio::Token(1);
+const SOCKACT: Token = Token(0);
+const SIGTERM: Token = Token(1);
 
 fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut BufferPool) -> usize {
     let mut bytes_sent = 0;
@@ -74,7 +75,7 @@ fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut Buffer
 
     while queue.peek().map_or(false, |p| p.exit_time <= now) {
         let p = queue.peek().unwrap();
-        bytes_sent += match socket.send_to(p.data.get(), &p.dst()) {
+        bytes_sent += match socket.send_to(p.data.get(), p.dst()) {
             Ok(len) => {
                 debug!("Sent {} bytes to {}", len, p.dst);
                 buffer_pool.recycle_byffer(queue.pop().unwrap().data); // Only remove transmitted packets
@@ -121,7 +122,7 @@ fn main() {
 
     let mut rng = rand::thread_rng();
 
-    let socket = match UdpSocket::bind(&SocketAddr::from((Ipv4Addr::UNSPECIFIED, opt.port))) {
+    let mut socket = match UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, opt.port))) {
         Ok(socket) => socket,
         Err(_) => {
             error!("Could not open listening socket.");
@@ -131,14 +132,10 @@ fn main() {
 
     let mut queue = Queue::new();
 
-    let poll = mio::Poll::new().unwrap();
-    poll.register(
-        &socket,
-        SOCKACT,
-        mio::Ready::readable(),
-        mio::PollOpt::level(),
-    )
-    .unwrap();
+    let mut poll = mio::Poll::new().unwrap();
+    poll.registry()
+        .register(&mut socket, SOCKACT, Interest::READABLE)
+        .unwrap();
 
     let mut events = mio::Events::with_capacity(32); // Just a few to store those received while transmiitting if needed
     let mut bytes_sent = 0;
@@ -154,18 +151,18 @@ fn main() {
             },
         };
 
-        poll.reregister(
-            &socket,
-            SOCKACT,
-            match queue.peek() {
-                Some(packet) if packet.exit_time <= now => {
-                    mio::Ready::readable() | mio::Ready::writable()
-                }
-                _ => mio::Ready::readable(),
-            },
-            mio::PollOpt::level(),
-        )
-        .unwrap();
+        poll.registry()
+            .reregister(
+                &mut socket,
+                SOCKACT,
+                match queue.peek() {
+                    Some(packet) if packet.exit_time <= now => {
+                        Interest::READABLE | Interest::WRITABLE
+                    }
+                    _ => Interest::READABLE,
+                },
+            )
+            .unwrap();
 
         poll.poll(&mut events, max_delay)
             .expect("Error while polling socket");
@@ -173,11 +170,11 @@ fn main() {
         for event in events.iter() {
             match event.token() {
                 SOCKACT => {
-                    if (event.readiness() & mio::Ready::writable()) == mio::Ready::writable() {
+                    if event.is_writable() {
                         bytes_sent += process_queue(&mut queue, &socket, &mut buffer_pool);
                     }
 
-                    if (event.readiness() & mio::Ready::readable()) == mio::Ready::readable() {
+                    if event.is_readable() {
                         loop {
                             // Get all pending packets
                             let mut buffer = buffer_pool.get_buffer();

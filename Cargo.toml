@@ -9,6 +9,6 @@ description = "A suffling router for the Redes de Ordenadores subject"
 structopt = "0.3"
 stderrlog = "0.4"
 log = "0.4"
-mio = "0.6"
+mio = { version = "0.7", features = ["os-poll", "udp"] }
 rand = { version = "0.7", features = ["log"] }
 num-format = { version = "0.4", features = ["with-system-locale"] }
