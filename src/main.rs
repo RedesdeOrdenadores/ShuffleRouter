@@ -25,7 +25,6 @@ use shufflerouter::queue::Queue;
 use mio::net::UdpSocket;
 use num_format::{SystemLocale, ToFormattedString};
 use rand::distributions::{Bernoulli, Distribution, Uniform};
-use signal_hook::iterator::Signals;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::{Duration, Instant};
 use structopt::StructOpt;
@@ -136,16 +135,6 @@ fn main() {
     poll.register(
         &socket,
         SOCKACT,
-        mio::Ready::readable(),
-        mio::PollOpt::level(),
-    )
-    .unwrap();
-
-    let signals = Signals::new(&[signal_hook::SIGTERM, signal_hook::SIGINT])
-        .expect("Could not capture TERM signal.");
-    poll.register(
-        &signals,
-        SIGTERM,
         mio::Ready::readable(),
         mio::PollOpt::level(),
     )
