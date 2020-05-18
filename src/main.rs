@@ -29,9 +29,9 @@ use num_format::{SystemLocale, ToFormattedString};
 use rand::distributions::{Bernoulli, Distribution, Uniform};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::{Duration, Instant};
-use structopt::StructOpt;
+use clap::Clap;
 
-#[derive(StructOpt, Debug)]
+#[derive(Clap, Debug)]
 /// Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
 /// A shuffling router for Redes de Ordenadores subject
 ///
@@ -43,27 +43,27 @@ use structopt::StructOpt;
 ///  byte. All of them in network byte order.
 struct Opt {
     /// Listening port
-    #[structopt(short = "p", long = "port", default_value = "2019")]
+    #[clap(short = "p", long = "port", default_value = "2019")]
     port: u16,
 
     /// Packet drop probability
-    #[structopt(short = "d", long = "drop", default_value = "0.0")]
+    #[clap(short = "d", long = "drop", default_value = "0.0")]
     drop: f64,
 
     /// Minimum packet delay, in milliseconds
-    #[structopt(short = "m", long = "min_delay", default_value = "0")]
+    #[clap(short = "m", long = "min_delay", default_value = "0")]
     min_delay: u64,
 
     /// Packet delay randomness, in milliseconds
-    #[structopt(short = "r", long = "rand_delay", default_value = "0")]
+    #[clap(short = "r", long = "rand_delay", default_value = "0")]
     rand_delay: u64,
 
     /// Verbose level
-    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
+    #[clap(short = "v", long = "verbose", parse(from_occurrences))]
     verbose: usize,
 
     /// Show log timestamp (sec, ms, ns, none)
-    #[structopt(short = "t", long = "timestamp")]
+    #[clap(short = "t", long = "timestamp")]
     ts: Option<stderrlog::Timestamp>,
 }
 
@@ -103,7 +103,7 @@ fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut Buffer
 }
 
 fn main() {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     stderrlog::new()
         .module(module_path!())

@@ -6,10 +6,13 @@ edition = "2018"
 description = "A shuffling router for the Redes de Ordenadores subject"
 
 [dependencies]
-structopt = "0.3"
 stderrlog = "0.4"
 log = "0.4"
 mio = { version = "0.7", features = ["os-poll", "udp"] }
 mio-signals = "0.1"
 rand = { version = "0.7", features = ["log"] }
 num-format = { version = "0.4", features = ["with-system-locale"] }
+
+[dependencies.clap]
+version = "3.0.0-beta.1"
+features = ["wrap_help"]
