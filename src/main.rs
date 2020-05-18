@@ -33,7 +33,7 @@ use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 /// Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
-/// A suffling router for Redes de Ordenadores subject
+/// A shuffling router for Redes de Ordenadores subject
 ///
 /// This is a simple echo server that redirects received UDP packets after a
 /// random amount of time—so packets can get reordered or even dropped—.
