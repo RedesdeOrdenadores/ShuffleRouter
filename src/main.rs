@@ -22,6 +22,7 @@ use shufflerouter::buffer::BufferPool;
 use shufflerouter::packet::Packet;
 use shufflerouter::queue::Queue;
 
+use clap::{crate_authors, crate_version, Clap};
 use mio::net::UdpSocket;
 use mio::{Interest, Token};
 use mio_signals::{Signal, Signals};
@@ -29,10 +30,7 @@ use num_format::{SystemLocale, ToFormattedString};
 use rand::distributions::{Bernoulli, Distribution, Uniform};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::{Duration, Instant};
-use clap::Clap;
 
-#[derive(Clap, Debug)]
-/// Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
 /// A shuffling router for Redes de Ordenadores subject
 ///
 /// This is a simple echo server that redirects received UDP packets after a
@@ -41,6 +39,8 @@ use clap::Clap;
 ///  Received packets must carry the destination address in the first four
 ///  bytes of the payload and the destination port as the fifth and sixth
 ///  byte. All of them in network byte order.
+#[derive(Clap, Debug)]
+#[clap(version = crate_version!(), author = crate_authors!())]
 struct Opt {
     /// Listening port
     #[clap(short = "p", long = "port", default_value = "2019")]
