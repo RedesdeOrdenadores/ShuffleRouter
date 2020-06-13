@@ -93,7 +93,7 @@ fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut Buffer
                     p.dst,
                     e
                 );
-		buffer_pool.recycle_byffer(queue.pop().unwrap().data); // Remove the packet causing the error
+                buffer_pool.recycle_byffer(queue.pop().unwrap().data); // Remove the packet causing the error
                 0
             }
         };
