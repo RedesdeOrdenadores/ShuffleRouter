@@ -6,7 +6,7 @@ edition = "2018"
 description = "A shuffling router for the Redes de Ordenadores subject"
 
 [dependencies]
-stderrlog = "0.4"
+stderrlog = "0.5"
 log = "0.4"
 mio = { version = "0.7", features = ["os-poll", "udp"] }
 mio-signals = "0.1"
