@@ -43,27 +43,27 @@ use std::time::{Duration, Instant};
 #[clap(version = crate_version!(), author = crate_authors!())]
 struct Opt {
     /// Listening port
-    #[clap(short = "p", long = "port", default_value = "2019")]
+    #[clap(short = 'p', long = "port", default_value = "2019")]
     port: u16,
 
     /// Packet drop probability
-    #[clap(short = "d", long = "drop", default_value = "0.0")]
+    #[clap(short = 'd', long = "drop", default_value = "0.0")]
     drop: f64,
 
     /// Minimum packet delay, in milliseconds
-    #[clap(short = "m", long = "min_delay", default_value = "0")]
+    #[clap(short = 'm', long = "min_delay", default_value = "0")]
     min_delay: u64,
 
     /// Packet delay randomness, in milliseconds
-    #[clap(short = "r", long = "rand_delay", default_value = "0")]
+    #[clap(short = 'r', long = "rand_delay", default_value = "0")]
     rand_delay: u64,
 
     /// Verbose level
-    #[clap(short = "v", long = "verbose", parse(from_occurrences))]
+    #[clap(short = 'v', long = "verbose", parse(from_occurrences))]
     verbose: usize,
 
     /// Show log timestamp (sec, ms, ns, none)
-    #[clap(short = "t", long = "timestamp")]
+    #[clap(short = 't', long = "timestamp")]
     ts: Option<stderrlog::Timestamp>,
 }
 
