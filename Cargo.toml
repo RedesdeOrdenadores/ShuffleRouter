@@ -10,7 +10,7 @@ stderrlog = "0.5"
 log = "0.4"
 mio = { version = "0.7.6", features = ["os-poll", "net"] }
 mio-signals = "0.1"
-rand = { version = "0.7", features = ["log"] }
+rand = { version = "0.8", features = ["log"] }
 num-format = { version = "0.4", features = ["with-system-locale"] }
 
 [dependencies.clap]
