@@ -201,6 +201,7 @@ fn main() {
                                     panic!("Error while reading datagram.");
                                 }
                             };
+                            buffer.set_len(len);
 
                             debug!("Received {} bytes from {}", len, addr);
 
