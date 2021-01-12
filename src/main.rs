@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019–2020 Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
+ * Copyright (C) 2019–2021 Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ use std::time::{Duration, Instant};
 #[clap(version = crate_version!(), author = crate_authors!())]
 struct Opt {
     /// Listening port
-    #[clap(short = 'p', long = "port", default_value = "2019")]
+    #[clap(short = 'p', long = "port", default_value = "2021")]
     port: u16,
 
     /// Packet drop probability
