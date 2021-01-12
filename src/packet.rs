@@ -16,20 +16,21 @@
  */
 
 use super::buffer::Buffer;
+use arrayref::array_ref;
+use nom::{do_parse, map, named, number::complete::be_u16, take};
 use std::cmp::Ordering;
-use std::convert::TryInto;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::time::{Duration, Instant};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum PacketError {
-    #[error("could not extract destination IP")]
-    InvalidIP(),
-    #[error("could not extract destination port")]
-    InvalidPort(),
-    #[error("only {0} bytes in received data. Minimum is six for IP + port")]
-    InvalidLenth(usize)
+    #[error("need {0} bytes of data. Minimum is six for IP + port")]
+    InvalidLenth(core::num::NonZeroUsize),
+    #[error("not enough data. Minimum is six for IP + port")]
+    NotEnoughData(),
+    #[error("sorry, could not decode the packet header")]
+    Unknown(),
 }
 
 pub struct Packet {
@@ -58,21 +59,28 @@ impl PartialOrd for Packet {
     }
 }
 
+fn to_ipv4_address(ip: &[u8]) -> Ipv4Addr {
+    Ipv4Addr::from(*array_ref![ip, 0, 4])
+}
+
+named!(address<&[u8], Ipv4Addr>, map!(take!(4), to_ipv4_address));
+named!(sockaddr<&[u8], (Ipv4Addr, u16)>, do_parse!(
+    ip: address >>
+    port: be_u16 >>
+    (ip, port)
+));
+
 fn get_dst(data: &[u8]) -> Result<SocketAddrV4, PacketError> {
-    if data.len() < 6 {
-        return Err(PacketError::InvalidLenth(data.len()));
-    }
+    let (_, (ip, port)) = sockaddr(data).map_err(|e| match e {
+        nom::Err::Incomplete(len) => match len {
+            nom::Needed::Unknown => PacketError::NotEnoughData(),
+            nom::Needed::Size(len) => PacketError::InvalidLenth(len),
+        },
 
-    let addr_bytes: [u8; 4] = data[..4]
-        .try_into()
-        .map_err(|_| PacketError::InvalidIP())?;
-    let port = u16::from_be_bytes(
-        data[4..6]
-            .try_into()
-            .map_err(|_| PacketError::InvalidPort())?,
-    );
+        _ => PacketError::Unknown(),
+    })?;
 
-    Ok(SocketAddrV4::new(Ipv4Addr::from(addr_bytes), port))
+    Ok(SocketAddrV4::new(ip, port))
 }
 
 impl Packet {
