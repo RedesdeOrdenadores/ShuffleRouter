@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019–2020 Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
+ * Copyright (C) 2019–2021 Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,17 @@ use std::cmp::Ordering;
 use std::convert::TryInto;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::time::{Duration, Instant};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum PacketError {
+    #[error("could not extract destination IP")]
+    InvalidIP(),
+    #[error("could not extract destination port")]
+    InvalidPort(),
+    #[error("only {0} bytes in received data. Minimum is six for IP + port")]
+    InvalidLenth(usize)
+}
 
 pub struct Packet {
     pub dst: SocketAddrV4,
@@ -47,21 +58,18 @@ impl PartialOrd for Packet {
     }
 }
 
-fn get_dst(data: &[u8]) -> Result<SocketAddrV4, String> {
+fn get_dst(data: &[u8]) -> Result<SocketAddrV4, PacketError> {
     if data.len() < 6 {
-        return Err(format!(
-            "Only {} bytes in received data. Minimum is six for IP + port",
-            data.len()
-        ));
+        return Err(PacketError::InvalidLenth(data.len()));
     }
 
     let addr_bytes: [u8; 4] = data[..4]
         .try_into()
-        .map_err(|_| "Could not extract destination address")?;
+        .map_err(|_| PacketError::InvalidIP())?;
     let port = u16::from_be_bytes(
         data[4..6]
             .try_into()
-            .map_err(|_| "Could not extract destination port")?,
+            .map_err(|_| PacketError::InvalidPort())?,
     );
 
     Ok(SocketAddrV4::new(Ipv4Addr::from(addr_bytes), port))
@@ -73,7 +81,7 @@ impl Packet {
         mut data: Buffer,
         len: usize,
         exit_time: Instant,
-    ) -> Result<Packet, String> {
+    ) -> Result<Packet, PacketError> {
         let dst = get_dst(data.get())?;
 
         data.get_mut()[..4].copy_from_slice(&orig.ip().octets());
