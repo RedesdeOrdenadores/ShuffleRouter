@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
+ * Copyright (C) 2021 Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
  */
 
 const MAX_BUFFER_SIZE: usize = 1500;
+const MAX_BUFFER_CAPACITY: usize = 16 * 1024;
 
 #[derive(Clone)]
 pub struct Buffer {
@@ -66,7 +67,9 @@ impl BufferPool {
 
     pub fn recycle_byffer(&mut self, mut buffer: Buffer) {
         buffer.set_len(MAX_BUFFER_SIZE);
-        self.queue.push(buffer)
+        if self.queue.len() <= MAX_BUFFER_CAPACITY {
+            self.queue.push(buffer)
+        }
     }
 }
 
