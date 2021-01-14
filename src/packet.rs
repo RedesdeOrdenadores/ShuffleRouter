@@ -18,7 +18,7 @@
 use super::buffer::Buffer;
 use nom::{
     combinator::map,
-    number::complete::{be_u16, be_u8},
+    number::streaming::{be_u16, be_u8},
     sequence::tuple,
     IResult,
 };
