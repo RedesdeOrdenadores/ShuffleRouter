@@ -76,7 +76,7 @@ fn sockaddr(input: &[u8]) -> IResult<&[u8], SocketAddrV4> {
 }
 
 fn get_dst(data: &[u8]) -> Result<SocketAddrV4, PacketError> {
-    Ok(sockaddr(data)
+    sockaddr(data)
         .map_err(|e| match e {
             nom::Err::Incomplete(len) => match len {
                 nom::Needed::Unknown => PacketError::NotEnoughData(),
@@ -84,8 +84,8 @@ fn get_dst(data: &[u8]) -> Result<SocketAddrV4, PacketError> {
             },
 
             _ => PacketError::Unknown(),
-        })?
-        .1)
+        })
+        .map(|(_, addr)| addr)
 }
 
 impl Packet {
