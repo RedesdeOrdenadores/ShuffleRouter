@@ -16,9 +16,12 @@
  */
 
 use super::buffer::Buffer;
-use arrayref::array_ref;
-use nom::{bytes::complete::take, combinator::map, sequence::tuple};
-use nom::{number::complete::be_u16, IResult};
+use nom::{
+    combinator::map,
+    number::complete::{be_u16, be_u8},
+    sequence::tuple,
+    IResult,
+};
 use std::cmp::Ordering;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::time::{Duration, Instant};
@@ -61,8 +64,8 @@ impl PartialOrd for Packet {
 }
 
 fn address(input: &[u8]) -> IResult<&[u8], Ipv4Addr> {
-    map(take(4u8), |ip_bytes: &[u8]| {
-        Ipv4Addr::from(*array_ref![ip_bytes, 0, 4])
+    map(tuple((be_u8, be_u8, be_u8, be_u8)), |(a, b, c, d)| {
+        Ipv4Addr::new(a, b, c, d)
     })(input)
 }
 
