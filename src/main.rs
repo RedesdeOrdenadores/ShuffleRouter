@@ -74,12 +74,12 @@ fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut Buffer
     let mut bytes_sent = 0;
     let now = Instant::now();
 
-    while queue.peek().map_or(false, |p| p.exit_time <= now) {
+    while queue.peek().map_or(false, |p| p.exit_time() <= now) {
         let p = queue.peek().unwrap();
-        bytes_sent += match socket.send_to(p.data.get(), p.dst()) {
+        bytes_sent += match socket.send_to(p.get(), p.dst()) {
             Ok(len) => {
-                debug!("Sent {} bytes to {}", len, p.dst);
-                buffer_pool.recycle_byffer(queue.pop().unwrap().data); // Only remove transmitted packets
+                debug!("Sent {} bytes to {}", len, p.dst());
+                buffer_pool.recycle_buffer(queue.pop().unwrap().into()); // Only remove transmitted packets
                 len
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -89,11 +89,11 @@ fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut Buffer
             Err(e) => {
                 warn!(
                     "Error transmitting {} bytes to {}: {}",
-                    p.data.len(),
-                    p.dst,
+                    p.get().len(),
+                    p.dst(),
                     e
                 );
-                buffer_pool.recycle_byffer(queue.pop().unwrap().data); // Remove the packet causing the error
+                buffer_pool.recycle_buffer(queue.pop().unwrap().into()); // Remove the packet causing the error
                 0
             }
         };
@@ -165,7 +165,7 @@ fn main() {
                 &mut socket,
                 SOCKACT,
                 match queue.peek() {
-                    Some(packet) if packet.exit_time <= now => {
+                    Some(packet) if packet.exit_time() <= now => {
                         Interest::READABLE | Interest::WRITABLE
                     }
                     _ => Interest::READABLE,

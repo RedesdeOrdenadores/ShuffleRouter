@@ -65,7 +65,7 @@ impl BufferPool {
         }
     }
 
-    pub fn recycle_byffer(&mut self, mut buffer: Buffer) {
+    pub fn recycle_buffer(&mut self, mut buffer: Buffer) {
         buffer.set_len(MAX_BUFFER_SIZE);
         if self.queue.len() <= MAX_BUFFER_CAPACITY {
             self.queue.push(buffer)

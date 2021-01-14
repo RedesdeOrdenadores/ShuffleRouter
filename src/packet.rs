@@ -50,9 +50,9 @@ impl<E> From<nom::Err<E>> for PacketError {
 }
 
 pub struct Packet {
-    pub dst: SocketAddrV4,
-    pub data: Buffer,
-    pub exit_time: Instant,
+    dst: SocketAddrV4,
+    data: Buffer,
+    exit_time: Instant,
 }
 
 impl PartialEq for Packet {
@@ -115,5 +115,19 @@ impl Packet {
 
     pub fn dst(&self) -> SocketAddr {
         SocketAddr::from(self.dst)
+    }
+
+    pub fn get(&self) -> &[u8] {
+        self.data.get()
+    }
+
+    pub fn exit_time(&self) -> Instant {
+        self.exit_time
+    }
+}
+
+impl From<Packet> for Buffer {
+    fn from(packet: Packet) -> Buffer {
+        packet.data
     }
 }
