@@ -216,12 +216,7 @@ fn main() {
                                     frame_delay.as_millis()
                                 );
 
-                                match Packet::create(
-                                    &addr,
-                                    buffer,
-                                    len,
-                                    Instant::now() + frame_delay,
-                                ) {
+                                match Packet::create(&addr, buffer, Instant::now() + frame_delay) {
                                     Ok(packet) => queue.push(packet),
                                     Err(err) => warn!("{}", err),
                                 };

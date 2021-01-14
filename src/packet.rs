@@ -89,14 +89,12 @@ impl Packet {
     pub fn create(
         orig: &SocketAddrV4,
         mut data: Buffer,
-        len: usize,
         exit_time: Instant,
     ) -> Result<Packet, PacketError> {
         let dst = get_dst(data.get())?;
 
         data.get_mut()[..4].copy_from_slice(&orig.ip().octets());
         data.get_mut()[4..6].copy_from_slice(&orig.port().to_be_bytes());
-        data.set_len(len);
 
         Ok(Packet {
             dst,
