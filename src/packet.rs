@@ -34,7 +34,19 @@ pub enum PacketError {
     #[error("not enough data. Minimum is six for IP + port")]
     NotEnoughData(),
     #[error("sorry, could not decode the packet header")]
-    Unknown(),
+    Unknown,
+}
+
+impl<E> From<nom::Err<E>> for PacketError {
+    fn from(error: nom::Err<E>) -> Self {
+        match error {
+            nom::Err::Incomplete(len) => match len {
+                nom::Needed::Unknown => PacketError::NotEnoughData(),
+                nom::Needed::Size(len) => PacketError::InvalidLenth(len),
+            },
+            _ => PacketError::Unknown,
+        }
+    }
 }
 
 pub struct Packet {
@@ -76,16 +88,7 @@ fn sockaddr(input: &[u8]) -> IResult<&[u8], SocketAddrV4> {
 }
 
 fn get_dst(data: &[u8]) -> Result<SocketAddrV4, PacketError> {
-    sockaddr(data)
-        .map_err(|e| match e {
-            nom::Err::Incomplete(len) => match len {
-                nom::Needed::Unknown => PacketError::NotEnoughData(),
-                nom::Needed::Size(len) => PacketError::InvalidLenth(len),
-            },
-
-            _ => PacketError::Unknown(),
-        })
-        .map(|(_, addr)| addr)
+    Ok(sockaddr(data).map(|(_, addr)| addr)?)
 }
 
 impl Packet {
