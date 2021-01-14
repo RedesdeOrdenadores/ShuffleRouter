@@ -17,8 +17,8 @@
 
 use super::buffer::Buffer;
 use arrayref::array_ref;
-use nom::{bytes::complete::take, combinator::map};
-use nom::{do_parse, named, number::complete::be_u16, IResult};
+use nom::{bytes::complete::take, combinator::map, sequence::tuple};
+use nom::{number::complete::be_u16, IResult};
 use std::cmp::Ordering;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::time::{Duration, Instant};
@@ -66,23 +66,23 @@ fn address(input: &[u8]) -> IResult<&[u8], Ipv4Addr> {
     })(input)
 }
 
-named!(sockaddr<&[u8], (Ipv4Addr, u16)>, do_parse!(
-    ip: address >>
-    port: be_u16 >>
-    (ip, port)
-));
+fn sockaddr(input: &[u8]) -> IResult<&[u8], SocketAddrV4> {
+    map(tuple((address, be_u16)), |(ip, port)| {
+        SocketAddrV4::new(ip, port)
+    })(input)
+}
 
 fn get_dst(data: &[u8]) -> Result<SocketAddrV4, PacketError> {
-    let (_, (ip, port)) = sockaddr(data).map_err(|e| match e {
-        nom::Err::Incomplete(len) => match len {
-            nom::Needed::Unknown => PacketError::NotEnoughData(),
-            nom::Needed::Size(len) => PacketError::InvalidLenth(len),
-        },
+    Ok(sockaddr(data)
+        .map_err(|e| match e {
+            nom::Err::Incomplete(len) => match len {
+                nom::Needed::Unknown => PacketError::NotEnoughData(),
+                nom::Needed::Size(len) => PacketError::InvalidLenth(len),
+            },
 
-        _ => PacketError::Unknown(),
-    })?;
-
-    Ok(SocketAddrV4::new(ip, port))
+            _ => PacketError::Unknown(),
+        })?
+        .1)
 }
 
 impl Packet {
