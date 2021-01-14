@@ -17,7 +17,8 @@
 
 use super::buffer::Buffer;
 use arrayref::array_ref;
-use nom::{do_parse, map, named, number::complete::be_u16, take};
+use nom::{bytes::complete::take, combinator::map};
+use nom::{do_parse, named, number::complete::be_u16, IResult};
 use std::cmp::Ordering;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::time::{Duration, Instant};
@@ -59,11 +60,12 @@ impl PartialOrd for Packet {
     }
 }
 
-fn to_ipv4_address(ip: &[u8]) -> Ipv4Addr {
-    Ipv4Addr::from(*array_ref![ip, 0, 4])
+fn address(input: &[u8]) -> IResult<&[u8], Ipv4Addr> {
+    map(take(4u8), |ip_bytes: &[u8]| {
+        Ipv4Addr::from(*array_ref![ip_bytes, 0, 4])
+    })(input)
 }
 
-named!(address<&[u8], Ipv4Addr>, map!(take!(4), to_ipv4_address));
 named!(sockaddr<&[u8], (Ipv4Addr, u16)>, do_parse!(
     ip: address >>
     port: be_u16 >>
