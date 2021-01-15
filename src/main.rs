@@ -187,7 +187,7 @@ fn main() {
                         loop {
                             // Get all pending packets
                             let mut buffer = buffer_pool.get_buffer();
-                            let (len, addr) = match socket.recv_from(buffer.get_mut()) {
+                            let (len, addr) = match socket.recv_from(&mut buffer) {
                                 Ok((len, addr)) => match addr {
                                     SocketAddr::V4(addrv4) => (len, addrv4),
                                     _ => panic!("Unimplemented"),

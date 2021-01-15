@@ -18,6 +18,8 @@
 const MAX_BUFFER_SIZE: usize = 1500;
 const MAX_BUFFER_CAPACITY: usize = 16 * 1024;
 
+use std::ops::{Deref, DerefMut};
+
 #[derive(Clone)]
 pub struct Buffer {
     buf: [u8; MAX_BUFFER_SIZE],
@@ -26,11 +28,11 @@ pub struct Buffer {
 
 #[allow(clippy::len_without_is_empty)]
 impl Buffer {
-    pub fn get_mut(&mut self) -> &mut [u8; MAX_BUFFER_SIZE] {
+    fn get_mut(&mut self) -> &mut [u8; MAX_BUFFER_SIZE] {
         &mut self.buf
     }
 
-    pub fn get(&self) -> &[u8] {
+    fn get(&self) -> &[u8] {
         &self.buf[..self.len]
     }
 
@@ -49,6 +51,32 @@ impl Default for Buffer {
             buf: [0; MAX_BUFFER_SIZE],
             len: MAX_BUFFER_SIZE,
         }
+    }
+}
+
+impl AsRef<[u8]> for Buffer {
+    fn as_ref(&self) -> &[u8] {
+        self.get()
+    }
+}
+
+impl AsMut<[u8]> for Buffer {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.get_mut()
+    }
+}
+
+impl Deref for Buffer {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        self.as_ref()
+    }
+}
+
+impl DerefMut for Buffer {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut()
     }
 }
 

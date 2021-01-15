@@ -97,10 +97,10 @@ impl Packet {
         mut data: Buffer,
         exit_time: Instant,
     ) -> Result<Packet, PacketError> {
-        let dst = get_dst(data.get())?;
+        let dst = get_dst(&data)?;
 
-        data.get_mut()[..4].copy_from_slice(&orig.ip().octets());
-        data.get_mut()[4..6].copy_from_slice(&orig.port().to_be_bytes());
+        data[..4].copy_from_slice(&orig.ip().octets());
+        data[4..6].copy_from_slice(&orig.port().to_be_bytes());
 
         Ok(Packet {
             dst,
@@ -117,8 +117,8 @@ impl Packet {
         SocketAddr::from(self.dst)
     }
 
-    pub fn get(&self) -> &[u8] {
-        self.data.get()
+    pub fn get(&self) -> &Buffer {
+        &self.data
     }
 
     pub fn exit_time(&self) -> Instant {
