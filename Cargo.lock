@@ -419,9 +419,9 @@ dependencies = [
 
 [[package]]
 name = "mio-signals"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e96f64fd50f8817af1c4ca6b301a92bfd1460f25614edae6322fec906440aee"
+checksum = "bdb34b75b7d003cb3b124b3faac5e4f0c8de1d47e252a879aaaa084fc440ee4f"
 dependencies = [
  "libc",
  "log",
