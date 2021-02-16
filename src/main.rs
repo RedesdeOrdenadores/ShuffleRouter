@@ -82,7 +82,7 @@ fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut Buffer
                 buffer_pool.recycle_buffer(queue.pop().unwrap().into()); // Only remove transmitted packets
                 len
             }
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 // We can not send more data without blocking
                 break;
             }
