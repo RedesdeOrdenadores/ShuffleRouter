@@ -33,7 +33,7 @@ bytes replaces by the sender-s IP address and port.
 
 ## Legal
 
-Copyright ⓒ 2019–2020 Miguel Rodríguez Pérez <miguel@det.uvigo.gal>.
+Copyright ⓒ 2019–2021 Miguel Rodríguez Pérez <miguel@det.uvigo.gal>.
 
 This simulator is licensed under the GNU General Public License, version 3
 (GPL-3.0). For information see LICENSE
