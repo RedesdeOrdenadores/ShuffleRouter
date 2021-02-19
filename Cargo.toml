@@ -12,7 +12,7 @@ mio = { version = "0.7.7", features = ["os-poll", "net"] }
 mio-signals = "0.1"
 rand = { version = "0.8", features = ["log"] }
 num-format = { version = "0.4", features = ["with-system-locale"] }
-thiserror = "1.0.23"
+thiserror = "1.0.24"
 nom = "6.1.2"
 
 [dependencies.clap]
