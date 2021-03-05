@@ -148,8 +148,7 @@ fn process_traffic(
             },
         )?;
 
-        poll.poll(&mut events, max_delay)
-            .expect("Error while polling socket");
+        poll.poll(&mut events, max_delay)?;
 
         for event in events.iter() {
             match event.token() {
@@ -194,10 +193,11 @@ fn process_traffic(
                                     frame_delay.as_millis()
                                 );
 
-                                match Packet::create(&addr, buffer, Instant::now() + frame_delay) {
-                                    Ok(packet) => queue.push(packet),
-                                    Err(err) => warn!("{}", err),
-                                };
+                                queue.push(Packet::create(
+                                    &addr,
+                                    buffer,
+                                    Instant::now() + frame_delay,
+                                )?);
                             };
                         }
                     }
@@ -238,10 +238,7 @@ pub async fn main() -> Result<()> {
 
     signal::ctrl_c().await?;
 
-    let locale = match SystemLocale::default() {
-        Ok(locale) => locale,
-        Err(_) => SystemLocale::from_name("C")?,
-    };
+    let locale = SystemLocale::default().unwrap_or_else(|_| SystemLocale::from_name("C").unwrap());
     let bytes_sent = bytes_sent.fetch_add(0, Ordering::Relaxed); // Trick to cast to usize
     println!(
         "\n{} bytes sent during latest execution.",
