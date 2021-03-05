@@ -28,8 +28,18 @@ use mio::net::UdpSocket;
 use mio::{Interest, Token};
 use num_format::{SystemLocale, ToFormattedString};
 use rand::distributions::{Bernoulli, Distribution, Uniform};
-use std::net::{Ipv4Addr, SocketAddr};
-use std::time::{Duration, Instant};
+use std::{
+    net::{Ipv4Addr, SocketAddr},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+};
+use std::{
+    thread,
+    time::{Duration, Instant},
+};
+use tokio::signal;
 
 /// A shuffling router for Redes de Ordenadores subject
 ///
@@ -67,8 +77,6 @@ struct Opt {
     ts: Option<stderrlog::Timestamp>,
 }
 
-const SOCKACT: Token = Token(0);
-
 fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut BufferPool) -> usize {
     let mut bytes_sent = 0;
     let now = Instant::now();
@@ -105,16 +113,18 @@ fn process_traffic(
     mut socket: UdpSocket,
     drop_distribution: impl Distribution<bool>,
     delay_distribution: impl Distribution<u64>,
-) -> Result<usize> {
+    bytes_sent: Arc<AtomicUsize>,
+) -> Result<()> {
     let mut rng = rand::thread_rng();
     let mut queue = Queue::new();
     let mut poll = mio::Poll::new()?;
+
+    const SOCKACT: Token = Token(0);
 
     poll.registry()
         .register(&mut socket, SOCKACT, Interest::READABLE)?;
 
     let mut events = mio::Events::with_capacity(32); // Just a few to store those received while transmiitting if needed
-    let mut bytes_sent = 0;
     let mut buffer_pool = BufferPool::default();
 
     loop {
@@ -145,7 +155,10 @@ fn process_traffic(
             match event.token() {
                 SOCKACT => {
                     if event.is_writable() {
-                        bytes_sent += process_queue(&mut queue, &socket, &mut buffer_pool);
+                        bytes_sent.fetch_add(
+                            process_queue(&mut queue, &socket, &mut buffer_pool),
+                            Ordering::Relaxed,
+                        );
                     }
 
                     if event.is_readable() {
@@ -195,15 +208,15 @@ fn process_traffic(
     }
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+pub async fn main() -> Result<()> {
     let opt = Opt::parse();
 
     stderrlog::new()
         .module(module_path!())
         .verbosity(opt.verbose)
         .timestamp(opt.ts.unwrap_or(stderrlog::Timestamp::Off))
-        .init()
-        .unwrap();
+        .init()?;
 
     let drop_distribution = Bernoulli::new(opt.drop)?;
 
@@ -211,12 +224,25 @@ fn main() -> Result<()> {
 
     let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, opt.port)))?;
 
-    let bytes_sent = process_traffic(socket, drop_distribution, delay_distribution)?;
+    let bytes_sent = Arc::new(AtomicUsize::default());
+    let bytes_sent_thread = bytes_sent.clone();
+    let _thread = thread::spawn(move || {
+        process_traffic(
+            socket,
+            drop_distribution,
+            delay_distribution,
+            bytes_sent_thread,
+        )
+        .unwrap();
+    });
+
+    signal::ctrl_c().await?;
 
     let locale = match SystemLocale::default() {
         Ok(locale) => locale,
-        Err(_) => SystemLocale::from_name("C").unwrap(),
+        Err(_) => SystemLocale::from_name("C")?,
     };
+    let bytes_sent = bytes_sent.fetch_add(0, Ordering::Relaxed); // Trick to cast to usize
     println!(
         "\n{} bytes sent during latest execution.",
         bytes_sent.to_formatted_string(&locale)
