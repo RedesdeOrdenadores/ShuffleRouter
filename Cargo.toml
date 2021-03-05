@@ -1,6 +1,6 @@
 [package]
 name = "shufflerouter"
-version = "1.5.4"
+version = "1.6.0"
 authors = ["Miguel Rodríguez Pérez <miguel@det.uvigo.gal>"]
 edition = "2018"
 description = "A shuffling router for the Redes de Ordenadores subject"
