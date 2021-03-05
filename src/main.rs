@@ -24,12 +24,12 @@ use shufflerouter::queue::Queue;
 
 use anyhow::Result;
 use clap::{crate_authors, crate_version, Clap};
-use mio::net::UdpSocket;
 use mio::{Interest, Token};
 use num_format::{SystemLocale, ToFormattedString};
 use rand::distributions::{Bernoulli, Distribution, Uniform};
 use std::{
-    net::{Ipv4Addr, SocketAddr},
+    net::{Ipv4Addr, SocketAddr, UdpSocket},
+    os::unix::prelude::{AsRawFd, FromRawFd},
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -75,6 +75,10 @@ struct Opt {
     /// Show log timestamp (sec, ms, ns, none)
     #[clap(short = 't', long = "timestamp")]
     ts: Option<stderrlog::Timestamp>,
+
+    /// EXPERIMENTAL: Multithreaded version
+    #[clap(short = 'j', long = "parallel")]
+    parallel: bool,
 }
 
 fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut BufferPool) -> usize {
@@ -110,7 +114,7 @@ fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut Buffer
 }
 
 fn process_traffic(
-    mut socket: UdpSocket,
+    socket: UdpSocket,
     drop_distribution: impl Distribution<bool>,
     delay_distribution: impl Distribution<u64>,
     bytes_sent: Arc<AtomicUsize>,
@@ -119,10 +123,12 @@ fn process_traffic(
     let mut queue = Queue::new();
     let mut poll = mio::Poll::new()?;
 
+    let mut mio_socket = unsafe { mio::net::UdpSocket::from_raw_fd(socket.as_raw_fd()) };
+
     const SOCKACT: Token = Token(0);
 
     poll.registry()
-        .register(&mut socket, SOCKACT, Interest::READABLE)?;
+        .register(&mut mio_socket, SOCKACT, Interest::READABLE)?;
 
     let mut events = mio::Events::with_capacity(32); // Just a few to store those received while transmiitting if needed
     let mut buffer_pool = BufferPool::default();
@@ -138,7 +144,7 @@ fn process_traffic(
         };
 
         poll.registry().reregister(
-            &mut socket,
+            &mut mio_socket,
             SOCKACT,
             match queue.peek() {
                 Some(packet) if packet.exit_time() <= now => {
@@ -223,18 +229,18 @@ pub async fn main() -> Result<()> {
     let delay_distribution = Uniform::new_inclusive(opt.min_delay, opt.min_delay + opt.rand_delay);
 
     let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, opt.port)))?;
+    socket.set_nonblocking(true)?;
 
     let bytes_sent = Arc::new(AtomicUsize::default());
-    let bytes_sent_thread = bytes_sent.clone();
-    let _thread = thread::spawn(move || {
-        process_traffic(
-            socket,
-            drop_distribution,
-            delay_distribution,
-            bytes_sent_thread,
-        )
-        .unwrap();
-    });
+
+    for _i in 1..=if opt.parallel { num_cpus::get() } else { 1 } {
+        let bytes_sent = bytes_sent.clone();
+        let socket = socket.try_clone()?;
+
+        let _thread = thread::spawn(move || {
+            process_traffic(socket, drop_distribution, delay_distribution, bytes_sent).unwrap();
+        });
+    }
 
     signal::ctrl_c().await?;
 
