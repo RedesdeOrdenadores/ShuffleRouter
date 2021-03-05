@@ -22,6 +22,7 @@ use shufflerouter::buffer::BufferPool;
 use shufflerouter::packet::Packet;
 use shufflerouter::queue::Queue;
 
+use anyhow::Result;
 use clap::{crate_authors, crate_version, Clap};
 use mio::net::UdpSocket;
 use mio::{Interest, Token};
@@ -102,49 +103,21 @@ fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut Buffer
     bytes_sent
 }
 
-fn main() {
-    let opt = Opt::parse();
-
-    stderrlog::new()
-        .module(module_path!())
-        .verbosity(opt.verbose)
-        .timestamp(opt.ts.unwrap_or(stderrlog::Timestamp::Off))
-        .init()
-        .unwrap();
-
-    let drop_distribution = match Bernoulli::new(opt.drop) {
-        Ok(dist) => dist,
-        Err(_) => {
-            error!("{} is not a valid probability value.", opt.drop);
-            return;
-        }
-    };
-
-    let delay_distribution = Uniform::new_inclusive(opt.min_delay, opt.min_delay + opt.rand_delay);
-
+fn process_traffic(
+    mut socket: UdpSocket,
+    drop_distribution: Bernoulli,
+    delay_distribution: Uniform<u64>,
+) -> Result<usize> {
     let mut rng = rand::thread_rng();
-
-    let mut socket = match UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, opt.port))) {
-        Ok(socket) => socket,
-        Err(_) => {
-            error!("Could not open listening socket.");
-            return;
-        }
-    };
-
     let mut queue = Queue::new();
-
-    let mut poll = mio::Poll::new().unwrap();
-
-    let mut signals = Signals::new(Signal::Interrupt | Signal::Quit).unwrap();
+    let mut poll = mio::Poll::new()?;
+    let mut signals = Signals::new(Signal::Interrupt | Signal::Quit)?;
 
     poll.registry()
-        .register(&mut signals, SIGTERM, Interest::READABLE)
-        .unwrap();
+        .register(&mut signals, SIGTERM, Interest::READABLE)?;
 
     poll.registry()
-        .register(&mut socket, SOCKACT, Interest::READABLE)
-        .unwrap();
+        .register(&mut socket, SOCKACT, Interest::READABLE)?;
 
     let mut events = mio::Events::with_capacity(32); // Just a few to store those received while transmiitting if needed
     let mut bytes_sent = 0;
@@ -160,18 +133,16 @@ fn main() {
             },
         };
 
-        poll.registry()
-            .reregister(
-                &mut socket,
-                SOCKACT,
-                match queue.peek() {
-                    Some(packet) if packet.exit_time() <= now => {
-                        Interest::READABLE | Interest::WRITABLE
-                    }
-                    _ => Interest::READABLE,
-                },
-            )
-            .unwrap();
+        poll.registry().reregister(
+            &mut socket,
+            SOCKACT,
+            match queue.peek() {
+                Some(packet) if packet.exit_time() <= now => {
+                    Interest::READABLE | Interest::WRITABLE
+                }
+                _ => Interest::READABLE,
+            },
+        )?;
 
         poll.poll(&mut events, max_delay)
             .expect("Error while polling socket");
@@ -225,18 +196,40 @@ fn main() {
                     }
                 }
                 SIGTERM => {
-                    let locale = match SystemLocale::default() {
-                        Ok(locale) => locale,
-                        Err(_) => SystemLocale::from_name("C").unwrap(),
-                    };
-                    println!(
-                        "\n{} bytes sent during latest execution.",
-                        bytes_sent.to_formatted_string(&locale)
-                    );
-                    return;
+                    return Ok(bytes_sent);
                 }
                 _ => unreachable!(),
             }
         }
     }
+}
+
+fn main() -> Result<()> {
+    let opt = Opt::parse();
+
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(opt.verbose)
+        .timestamp(opt.ts.unwrap_or(stderrlog::Timestamp::Off))
+        .init()
+        .unwrap();
+
+    let drop_distribution = Bernoulli::new(opt.drop)?;
+
+    let delay_distribution = Uniform::new_inclusive(opt.min_delay, opt.min_delay + opt.rand_delay);
+
+    let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, opt.port)))?;
+
+    let bytes_sent = process_traffic(socket, drop_distribution, delay_distribution)?;
+
+    let locale = match SystemLocale::default() {
+        Ok(locale) => locale,
+        Err(_) => SystemLocale::from_name("C").unwrap(),
+    };
+    println!(
+        "\n{} bytes sent during latest execution.",
+        bytes_sent.to_formatted_string(&locale)
+    );
+
+    Ok(())
 }
