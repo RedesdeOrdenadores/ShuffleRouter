@@ -26,7 +26,6 @@ use anyhow::Result;
 use clap::{crate_authors, crate_version, Clap};
 use mio::net::UdpSocket;
 use mio::{Interest, Token};
-use mio_signals::{Signal, Signals};
 use num_format::{SystemLocale, ToFormattedString};
 use rand::distributions::{Bernoulli, Distribution, Uniform};
 use std::net::{Ipv4Addr, SocketAddr};
@@ -69,7 +68,6 @@ struct Opt {
 }
 
 const SOCKACT: Token = Token(0);
-const SIGTERM: Token = Token(1);
 
 fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut BufferPool) -> usize {
     let mut bytes_sent = 0;
@@ -111,10 +109,6 @@ fn process_traffic(
     let mut rng = rand::thread_rng();
     let mut queue = Queue::new();
     let mut poll = mio::Poll::new()?;
-    let mut signals = Signals::new(Signal::Interrupt | Signal::Quit)?;
-
-    poll.registry()
-        .register(&mut signals, SIGTERM, Interest::READABLE)?;
 
     poll.registry()
         .register(&mut socket, SOCKACT, Interest::READABLE)?;
@@ -194,9 +188,6 @@ fn process_traffic(
                             };
                         }
                     }
-                }
-                SIGTERM => {
-                    return Ok(bytes_sent);
                 }
                 _ => unreachable!(),
             }
