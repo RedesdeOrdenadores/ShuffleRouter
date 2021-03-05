@@ -105,8 +105,8 @@ fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut Buffer
 
 fn process_traffic(
     mut socket: UdpSocket,
-    drop_distribution: Bernoulli,
-    delay_distribution: Uniform<u64>,
+    drop_distribution: impl Distribution<bool>,
+    delay_distribution: impl Distribution<u64>,
 ) -> Result<usize> {
     let mut rng = rand::thread_rng();
     let mut queue = Queue::new();
