@@ -25,7 +25,6 @@ use shufflerouter::queue::Queue;
 use anyhow::Result;
 use clap::{crate_authors, crate_version, Clap};
 use mio::{Interest, Token};
-use num_format::{SystemLocale, ToFormattedString};
 use rand::distributions::{Bernoulli, Distribution, Uniform};
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
@@ -247,11 +246,9 @@ pub async fn main() -> Result<()> {
 
     signal::ctrl_c().await?;
 
-    let locale = SystemLocale::default().unwrap_or_else(|_| SystemLocale::from_name("C").unwrap());
-    let bytes_sent = bytes_sent.fetch_add(0, Ordering::Relaxed); // Trick to cast to usize
     println!(
         "\n{} bytes sent during latest execution.",
-        bytes_sent.to_formatted_string(&locale)
+        bytes_sent.fetch_add(0, Ordering::Relaxed) // Trick to cast to usize
     );
 
     Ok(())
