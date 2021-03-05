@@ -29,7 +29,6 @@ use num_format::{SystemLocale, ToFormattedString};
 use rand::distributions::{Bernoulli, Distribution, Uniform};
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
-    os::unix::prelude::{AsRawFd, FromRawFd},
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -81,7 +80,11 @@ struct Opt {
     parallel: bool,
 }
 
-fn process_queue(queue: &mut Queue, socket: &UdpSocket, buffer_pool: &mut BufferPool) -> usize {
+fn process_queue(
+    queue: &mut Queue,
+    socket: &mio::net::UdpSocket,
+    buffer_pool: &mut BufferPool,
+) -> usize {
     let mut bytes_sent = 0;
     let now = Instant::now();
 
@@ -123,12 +126,12 @@ fn process_traffic(
     let mut queue = Queue::new();
     let mut poll = mio::Poll::new()?;
 
-    let mut mio_socket = unsafe { mio::net::UdpSocket::from_raw_fd(socket.as_raw_fd()) };
+    let mut socket = mio::net::UdpSocket::from_std(socket);
 
     const SOCKACT: Token = Token(0);
 
     poll.registry()
-        .register(&mut mio_socket, SOCKACT, Interest::READABLE)?;
+        .register(&mut socket, SOCKACT, Interest::READABLE)?;
 
     let mut events = mio::Events::with_capacity(32); // Just a few to store those received while transmiitting if needed
     let mut buffer_pool = BufferPool::default();
@@ -144,7 +147,7 @@ fn process_traffic(
         };
 
         poll.registry().reregister(
-            &mut mio_socket,
+            &mut socket,
             SOCKACT,
             match queue.peek() {
                 Some(packet) if packet.exit_time() <= now => {
