@@ -11,7 +11,7 @@ description: |
   the first four bytes of the payload and the destination
   port as the fifth and sixth byte. All of them in
   network byte order. Packets are forwarded with the first six
-  bytes replaces by the sender's IP address and port.
+  bytes replaced by the sender's IP address and port.
 
 confinement: strict
 base: core20
