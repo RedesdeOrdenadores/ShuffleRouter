@@ -19,7 +19,7 @@ jobs:
             asset_name: shufflerouter-lab-linux-amd64
           - os: windows-latest
             artifact_name: ShuffleRouter.exe
-            asset_name: shufflerouter-win-amd64
+            asset_name: shufflerouter-win-amd64.exe
           - os: macos-latest
             artifact_name: shufflerouter
             asset_name: shufflerouter-macos-amd64
