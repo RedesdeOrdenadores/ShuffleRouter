@@ -186,6 +186,7 @@ fn process_traffic(
                                     panic!("Error while reading datagram.");
                                 }
                             };
+                            let arrival_time = Instant::now();
                             buffer.set_len(len);
 
                             debug!("Received {} bytes from {}", len, addr);
@@ -204,7 +205,7 @@ fn process_traffic(
                                 queue.push(Packet::create(
                                     addr,
                                     buffer,
-                                    Instant::now() + frame_delay,
+                                    arrival_time + frame_delay,
                                 )?);
                             };
                         }
