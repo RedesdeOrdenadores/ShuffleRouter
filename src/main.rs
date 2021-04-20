@@ -178,7 +178,7 @@ fn process_traffic(
                                     _ => panic!("Unimplemented"),
                                 },
 
-                                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                                     // We can not read more data without blocking
                                     break;
                                 }
@@ -202,11 +202,12 @@ fn process_traffic(
                                     frame_delay.as_millis()
                                 );
 
-                                queue.push(Packet::create(
-                                    addr,
-                                    buffer,
-                                    arrival_time + frame_delay,
-                                )?);
+                                if let Err(e) =
+                                    Packet::create(addr, buffer, arrival_time + frame_delay)
+                                        .map(|packet| queue.push(packet))
+                                {
+                                    warn!("Could not parse packet {:?}", e);
+                                }
                             };
                         }
                     }
@@ -241,7 +242,11 @@ pub async fn main() -> Result<()> {
         let socket = socket.try_clone()?;
 
         let _thread = thread::spawn(move || {
-            process_traffic(socket, drop_distribution, delay_distribution, bytes_sent).unwrap();
+            if let Err(e) =
+                process_traffic(socket, drop_distribution, delay_distribution, bytes_sent)
+            {
+                warn!("Error while processing traffic: {:?}", e);
+            };
         });
     }
 
