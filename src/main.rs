@@ -158,7 +158,7 @@ fn process_traffic(
 
         poll.poll(&mut events, max_delay)?;
 
-        for event in events.iter() {
+        for event in &events {
             match event.token() {
                 SOCKACT => {
                     if event.is_writable() {
