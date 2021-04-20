@@ -93,7 +93,7 @@ fn get_dst(data: &[u8]) -> Result<SocketAddrV4, PacketError> {
 
 impl Packet {
     pub fn create(
-        orig: &SocketAddrV4,
+        orig: SocketAddrV4,
         mut data: Buffer,
         exit_time: Instant,
     ) -> Result<Packet, PacketError> {

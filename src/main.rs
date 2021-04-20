@@ -202,7 +202,7 @@ fn process_traffic(
                                 );
 
                                 queue.push(Packet::create(
-                                    &addr,
+                                    addr,
                                     buffer,
                                     Instant::now() + frame_delay,
                                 )?);
