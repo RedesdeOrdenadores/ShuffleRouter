@@ -13,7 +13,7 @@ stderrlog = "0.5"
 log = "0.4"
 mio = { version = "0.7.7", features = ["os-poll", "net"] }
 rand = { version = "0.8", features = ["log"] }
-thiserror = "1.0.23"
+thiserror = "1.0.25"
 nom = "6.1.2"
 anyhow = "1.0"
 num_cpus = "1.8"
