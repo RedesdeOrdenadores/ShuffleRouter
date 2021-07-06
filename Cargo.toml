@@ -5,7 +5,6 @@ authors = ["Miguel Rodríguez Pérez <miguel@det.uvigo.gal>"]
 edition = "2018"
 description = "A shuffling router for the Redes de Ordenadores subject"
 repositoty = "https://github.com/RedesdeOrdenadores/ShuffleRouter.git"
-license = "GPL-3.0-or-later"
 license-file = "LICENSE"
 
 [dependencies]
