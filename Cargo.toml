@@ -16,7 +16,7 @@ thiserror = "1.0.26"
 nom = "6.2.1"
 anyhow = "1.0"
 num_cpus = "1.8"
-tokio = { version = "1.8.0", features = ["macros", "rt-multi-thread", "signal"] }
+tokio = { version = "1.8.1", features = ["macros", "rt-multi-thread", "signal"] }
 
 [dependencies.clap]
 version = "3.0.0-beta.2"
