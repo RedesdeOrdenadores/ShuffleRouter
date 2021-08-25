@@ -139,10 +139,7 @@ fn process_traffic(
         let now = Instant::now();
         let max_delay = match queue.peek() {
             None => None,
-            Some(packet) => match packet.get_duration_till_next(now) {
-                Some(delay) => Some(delay),
-                None => None,
-            },
+            Some(packet) => packet.get_duration_till_next(now),
         };
 
         poll.registry().reregister(
