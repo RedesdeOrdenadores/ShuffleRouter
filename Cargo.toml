@@ -10,7 +10,7 @@ license-file = "LICENSE"
 [dependencies]
 stderrlog = "0.5"
 log = "0.4"
-mio = { version = "0.7.13", features = ["os-poll", "net"] }
+mio = { version = "0.8.0", features = ["os-poll", "net"] }
 rand = { version = "0.8", features = ["log"] }
 thiserror = "1.0.26"
 nom = "7.0.0"
