@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019–2021 Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
+ * Copyright (C) 2019–2022 Miguel Rodríguez Pérez <miguel@det.uvigo.gal>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ use shufflerouter::packet::Packet;
 use shufflerouter::queue::Queue;
 
 use anyhow::Result;
-use clap::{crate_authors, crate_version, Clap};
+use clap::Parser;
 use mio::{Interest, Token};
 use rand::distributions::{Bernoulli, Distribution, Uniform};
 use std::{
@@ -47,8 +47,8 @@ use tokio::signal;
 ///  Received packets must carry the destination address in the first four
 ///  bytes of the payload and the destination port as the fifth and sixth
 ///  byte. All of them in network byte order.
-#[derive(Clap, Debug)]
-#[clap(version = crate_version!(), author = crate_authors!())]
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
 struct Opt {
     /// Listening port
     #[clap(short = 'p', long = "port", default_value = "2021")]
