@@ -2,7 +2,7 @@
 name = "shufflerouter"
 version = "1.7.0"
 authors = ["Miguel Rodríguez Pérez <miguel@det.uvigo.gal>"]
-edition = "2018"
+edition = "2021"
 description = "A shuffling router for the Redes de Ordenadores subject"
 repository = "https://github.com/RedesdeOrdenadores/ShuffleRouter.git"
 license-file = "LICENSE"
