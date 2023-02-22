@@ -1,6 +1,6 @@
 [package]
 name = "shufflerouter"
-version = "1.7.1"
+version = "1.7.2"
 authors = ["Miguel Rodríguez Pérez <miguel@det.uvigo.gal>"]
 edition = "2021"
 description = "A shuffling router for the Redes de Ordenadores subject"
@@ -10,14 +10,14 @@ license-file = "LICENSE"
 [dependencies]
 stderrlog = "0.5"
 log = "0.4"
-mio = { version = "0.8.4", features = ["os-poll", "net"] }
+mio = { version = "0.8.6", features = ["os-poll", "net"] }
 rand = { version = "0.8", features = ["log"] }
-thiserror = "1.0.34"
-nom = "7.1.1"
+thiserror = "1.0.38"
+nom = "7.1.3"
 anyhow = "1.0"
-num_cpus = "1.13"
-tokio = { version = "1.21.0", features = ["macros", "rt-multi-thread", "signal"] }
+num_cpus = "1.15"
+tokio = { version = "1.25.0", features = ["macros", "rt-multi-thread", "signal"] }
 
 [dependencies.clap]
-version = "3.2"
+version = "4.1"
 features = ["derive", "wrap_help"]
