@@ -1,6 +1,6 @@
 name: shufflerouter
 version: 1.7.2
-summary: A testbet for the Redes de Ordenadores Subject Practical Assigment
+summary: A testbed for the Redes de Ordenadores Subject Practical Assignment
 
 description: |
   This is a simple echo server that redirects received UDP 
